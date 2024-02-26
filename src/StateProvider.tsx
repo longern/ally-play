@@ -16,8 +16,13 @@ function useSettingsState() {
   const [settings, setSettings] = useState<Settings>(null);
 
   useEffect(() => {
-    const settings = localStorage.getItem("settings") ?? "{}";
-    setSettings(JSON.parse(settings));
+    const settingsValue = localStorage.getItem("settings") ?? "{}";
+    const settings = JSON.parse(settingsValue) as Settings;
+    if (!settings.username) {
+      settings.username = window.prompt("Enter your username");
+      if (!settings.username) window.close();
+    }
+    setSettings(settings);
   }, []);
 
   useEffect(() => {
@@ -41,9 +46,9 @@ type GlobalState = {
 };
 
 type SetGlobalState = {
-  setSettings: (settings: Settings) => void;
-  setRoomID: (roomID: string | undefined) => void;
-  setIsHost: (isHost: boolean) => void;
+  setSettings: React.Dispatch<React.SetStateAction<Settings>>;
+  setRoomID: React.Dispatch<React.SetStateAction<string | undefined>>;
+  setIsHost: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const StateContext = createContext<GlobalState | null>(null);

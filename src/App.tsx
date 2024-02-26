@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import React, { Suspense, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useSetIsHost, useSetRoomID } from "./StateProvider";
+import { useSetIsHost, useSetRoomID, useSettings } from "./StateProvider";
 import { ErrorBoundary } from "react-error-boundary";
 
 const RoomDialog = React.lazy(() => import("./RoomDialog"));
@@ -36,10 +36,12 @@ const globalStyles = (
 );
 
 function Header() {
+  const settings = useSettings();
+
   return (
     <Toolbar disableGutters>
       <Avatar sx={{ margin: 1 }}></Avatar>
-      User
+      {settings?.username}
     </Toolbar>
   );
 }
@@ -69,7 +71,9 @@ function Fallback({ error }) {
   const { t } = useTranslation();
   return (
     <div role="alert">
-      <pre style={{ color: "red" }}>{error.message}</pre>
+      <pre style={{ color: "red", overflowWrap: "break-word" }}>
+        {error.message}
+      </pre>
       <Button onClick={() => window.location.reload()} variant="outlined">
         {t("Reload")}
       </Button>
@@ -78,7 +82,7 @@ function Fallback({ error }) {
 }
 
 function App() {
-  const [createRoomDialogOpen, setCreateRoomDialogOpen] = React.useState(false);
+  const [roomDialogOpen, setRoomDialogOpen] = React.useState(false);
   const setRoomID = useSetRoomID();
   const setIsHost = useSetIsHost();
 
@@ -94,15 +98,15 @@ function App() {
 
   const handleCreateRoom = useCallback(() => {
     setIsHost(true);
-    setCreateRoomDialogOpen(true);
+    setRoomDialogOpen(true);
   }, [setIsHost]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("r")) {
       setRoomID(params.get("r"));
-      setCreateRoomDialogOpen(true);
-      window.history.replaceState(null, "", "");
+      setRoomDialogOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
     } else if (window.history.state !== null) {
       window.history.replaceState(null, "");
     }
@@ -119,8 +123,8 @@ function App() {
         </Stack>
         <Suspense>
           <RoomDialog
-            open={createRoomDialogOpen}
-            onClose={() => setCreateRoomDialogOpen(false)}
+            open={roomDialogOpen}
+            onClose={() => setRoomDialogOpen(false)}
           />
         </Suspense>
       </ThemeProvider>

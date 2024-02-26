@@ -7,6 +7,13 @@ import QRCode from "qrcode";
 import { HistoryDialog } from "./HistoryDialog";
 import { useIsHost, useRoomID, useSetRoomID } from "./StateProvider";
 
+function roomURL(roomID: string) {
+  const params = new URLSearchParams({ r: roomID });
+  const url = new URL(window.location.href);
+  url.search = params.toString();
+  return url.toString();
+}
+
 function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [peer, setPeer] = useState<Peer | null>(null);
   const [ready, setReady] = useState(false);
@@ -50,11 +57,8 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [isHost, open, setRoomID]);
 
   useEffect(() => {
-    if (!isHost || peer === null) return;
-    const params = new URLSearchParams({ r: peer.id?.slice(10) });
-    const url = new URL(window.location.href);
-    url.search = params.toString();
-    QRCode.toCanvas(canvasRef.current!, url.toString());
+    if (!isHost || !peer?.id) return;
+    QRCode.toCanvas(canvasRef.current!, roomURL(peer.id.slice(10)));
   }, [isHost, peer]);
 
   return (
@@ -77,6 +81,14 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
         ) : isHost ? (
           <>
             <canvas ref={canvasRef}></canvas>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                navigator.clipboard.writeText(roomURL(roomID!));
+              }}
+            >
+              {t("Invite")}
+            </Button>
             <Button variant="outlined">{t("Start")}</Button>
           </>
         ) : (
