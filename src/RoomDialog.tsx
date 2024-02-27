@@ -101,6 +101,12 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     QRCode.toCanvas(canvasRef.current, roomURL(peer.id.slice(10)));
   }, [isHost, peer]);
 
+  useEffect(() => {
+    if (open) return;
+    setGameStarted(false);
+    setReady(false);
+  }, [open]);
+
   return (
     <HistoryDialog
       hash="room"
