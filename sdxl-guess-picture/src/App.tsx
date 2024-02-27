@@ -9,7 +9,7 @@ const ApiContext = createContext<API>(null);
 const GameStateContext = createContext<GameState>(null);
 
 const ApiProvider = ({ children }) => {
-  const [notSupported, setNotSupported] = useState(false);
+  const [notSupported, setNotSupported] = useState<boolean | null>(null);
   const [api, setApi] = useState<API>(null);
   const [gameState, setGameState] = useState<GameState>(null);
 
@@ -23,7 +23,10 @@ const ApiProvider = ({ children }) => {
       },
     });
     connection.promise
-      .then((api) => setApi(api))
+      .then((api) => {
+        setApi(api);
+        setNotSupported(false);
+      })
       .catch(() => setNotSupported(true));
 
     return () => {
@@ -34,7 +37,9 @@ const ApiProvider = ({ children }) => {
   return (
     <ApiContext.Provider value={api}>
       <GameStateContext.Provider value={gameState}>
-        {notSupported ? (
+        {notSupported === false ? (
+          children
+        ) : (
           <div
             style={{
               height: "100%",
@@ -43,10 +48,8 @@ const ApiProvider = ({ children }) => {
               alignItems: "center",
             }}
           >
-            Not supported
+            {notSupported === null ? "Loading..." : "Not supported"}
           </div>
-        ) : (
-          children
         )}
       </GameStateContext.Provider>
     </ApiContext.Provider>
