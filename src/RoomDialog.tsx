@@ -32,7 +32,7 @@ function GameContainer({ onClose }) {
       ref={iframeRef}
       style={{ width: "100%", height: "100%", border: "none" }}
       title="game-container"
-      src="/#game"
+      src="/sdxl-guess-picture/"
     ></iframe>
   );
 }
@@ -143,7 +143,7 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
                 setReady((ready) => !ready);
               }}
             >
-              {ready ? t("Ready") : t("Not ready")}
+              {ready ? t("Cancel ready") : t("Get ready")}
             </Button>
           )}
         </Stack>

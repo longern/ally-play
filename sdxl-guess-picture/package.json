@@ -1,28 +1,19 @@
 {
-  "name": "ally-play",
+  "name": "sdxl-guess-picture",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.11",
-    "@mui/material": "^5.15.11",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "peerjs": "^1.5.2",
-    "penpal": "^6.2.2",
-    "qrcode": "^1.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-error-boundary": "^4.0.12",
-    "react-i18next": "^14.0.5",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && (cd sdxl-guess-picture && npm run build)",
+    "build": "BUILD_PATH='../build/sdxl-guess-picture' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -44,8 +35,5 @@
       "last 1 safari version"
     ]
   },
-  "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@types/qrcode": "^1.5.5"
-  }
+  "homepage": "/sdxl-guess-picture"
 }
