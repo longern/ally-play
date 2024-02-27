@@ -90,8 +90,8 @@ function Main({
   const handleInstall = useCallback(async () => {
     const gameUrl = window.prompt(t("Enter the URL of the game to install"));
     if (!gameUrl) return;
-    const trimmedUrl = gameUrl.replace(/\/$/, "");
-    const response = await fetch(`${trimmedUrl}/manifest.json`);
+    const normalizedUrl = gameUrl.replace(/\/?$/, "/");
+    const response = await fetch(`${normalizedUrl}manifest.json`);
     const manifest = await response.json();
     if (!manifest.name) return;
     const icons: { src: string; sizes: string }[] = manifest.icons ?? [];
@@ -106,8 +106,8 @@ function Main({
           ...(settings.installedGames ?? []),
           {
             name: manifest.name,
-            url: trimmedUrl,
-            icon,
+            url: normalizedUrl,
+            icon: icon ? new URL(icon, normalizedUrl).toString() : undefined,
           },
         ],
       };
