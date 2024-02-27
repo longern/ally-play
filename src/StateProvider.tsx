@@ -6,10 +6,15 @@ import React, {
   useState,
 } from "react";
 
-type Settings = {
+export type Settings = {
   avatar: string;
   language: string;
   username: string;
+  installedGames: {
+    name: string;
+    url: string;
+    icon?: string;
+  }[];
 };
 
 function useSettingsState() {

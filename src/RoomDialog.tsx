@@ -17,8 +17,19 @@ function roomURL(roomID: string) {
 function GameContainer({ onClose }) {
   void onClose;
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    import("penpal").then(({ connectToChild }) => {
+      connectToChild({
+        iframe: iframeRef.current!,
+      });
+    });
+  }, []);
+
   return (
     <iframe
+      ref={iframeRef}
       style={{ width: "100%", height: "100%", border: "none" }}
       title="game-container"
       src="/#game"
