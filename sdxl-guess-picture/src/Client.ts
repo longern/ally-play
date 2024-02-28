@@ -78,7 +78,7 @@ export function Client<GameState>({
                 setGameState((value) => {
                   const gameState = JSON.parse(JSON.stringify(value));
                   game.moves[prop](
-                    { G: gameState, ctx, playerID: "0" },
+                    { G: gameState, ctx, playerID: ctx.playerID },
                     ...args
                   );
                   return gameState;
@@ -111,6 +111,7 @@ export function Client<GameState>({
   }, [ctx, gameState, socket]);
 
   return (
-    gameState && createElement(board, { G: gameState, moves, playerID: "0" })
+    gameState &&
+    createElement(board, { G: gameState, moves, playerID: ctx.playerID })
   );
 }

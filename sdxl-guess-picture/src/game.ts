@@ -3,7 +3,7 @@ import type { Game } from "./Client";
 export type GameState = {
   stage: "upload" | "pick" | "confuse" | "guess" | "reveal";
   description: string;
-  players: Record<string, { score: number; hand: any[]; guess: number }>;
+  players: Record<string, { score: number; hand: string[]; guess: number }>;
   board: { playerID: string; picture: string }[];
 };
 

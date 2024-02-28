@@ -109,6 +109,7 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const handleStartGame = useCallback(() => {
     setGameStarted(true);
+    setPlayerID("0");
     connections.forEach((connection, index) => {
       connection.send({ type: "start", playerID: (index + 1).toString() });
     });

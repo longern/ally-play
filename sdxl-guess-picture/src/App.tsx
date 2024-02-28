@@ -32,10 +32,10 @@ function GameBoard({
   return G.stage === "upload" ? (
     <img src={imgUrl.toString()} alt="" />
   ) : G.stage === "pick" ? (
-    <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexWrap: "wrap" }}>
       {G.players[playerID].hand.map((picture, i) => (
         <img
-          style={{ flexBasis: "50%" }}
+          style={{ minWidth: 0, flexBasis: "50%" }}
           key={i}
           src={picture}
           alt=""
@@ -49,7 +49,9 @@ function GameBoard({
       alt=""
       onClick={() => moves.guess(Math.floor(Math.random() * 6))}
     />
-  ) : null;
+  ) : (
+    G.stage
+  );
 }
 
 function useSocket() {
