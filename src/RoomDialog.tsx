@@ -20,11 +20,14 @@ function GameContainer({ onClose }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    import("penpal").then(({ connectToChild }) => {
-      connectToChild({
-        iframe: iframeRef.current!,
-      });
-    });
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      console.log(event.data);
+    };
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
   }, []);
 
   return (

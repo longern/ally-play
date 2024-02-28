@@ -1,104 +1,78 @@
-import React, { createContext, useEffect, useState } from "react";
-import { connectToParent } from "penpal";
+import React, { useEffect, useMemo, useState } from "react";
 
 import "./App.css";
-import { API } from "./api";
 import { Game, GameState } from "./game";
+import { ParentSocket } from "./ParentSocket";
 
-const ApiContext = createContext<API>(null);
-const GameStateContext = createContext<GameState>(null);
-
-const ApiProvider = ({ children }) => {
-  const [notSupported, setNotSupported] = useState<boolean | null>(null);
-  const [api, setApi] = useState<API>(null);
-  const [gameState, setGameState] = useState<GameState>(null);
-
-  useEffect(() => {
-    const connection = connectToParent<API>({
-      timeout: 3000,
-      methods: {
-        sync(state: GameState) {
-          setGameState(state);
-        },
-      },
-    });
-    connection.promise
-      .then((api) => {
-        setApi(api);
-        setNotSupported(false);
-      })
-      .catch(() => setNotSupported(true));
-
-    return () => {
-      connection.destroy();
-    };
-  }, []);
-
-  return (
-    <ApiContext.Provider value={api}>
-      <GameStateContext.Provider value={gameState}>
-        {notSupported === false ? (
-          children
-        ) : (
-          <div
-            style={{
-              height: "100%",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {notSupported === null ? "Loading..." : "Not supported"}
-          </div>
-        )}
-      </GameStateContext.Provider>
-    </ApiContext.Provider>
-  );
+type GameMoves<
+  T extends {
+    moves: Record<string, any>;
+  }
+> = {
+  [K in keyof T["moves"]]: (
+    ...args: T["moves"][K] extends (client: any, ...args: infer I) => void
+      ? I
+      : []
+  ) => void;
 };
-
-class ParentSocket extends EventTarget {
-  #handler: (event: MessageEvent) => void;
-
-  constructor() {
-    super();
-    this.#handler = (event) => {
-      if (event.source !== window.parent) return;
-      const message = event.data;
-      this.dispatchEvent(new MessageEvent("message", { data: message }));
-    };
-    window.addEventListener("message", this.#handler);
-  }
-
-  send(data: any) {
-    window.parent.postMessage(data, window.parent.origin);
-  }
-
-  close() {
-    window.removeEventListener("message", this.#handler);
-  }
-}
 
 function GameBoard({
   G,
   moves,
+  playerID,
 }: {
   G: GameState;
-  moves: (typeof Game)["moves"];
+  moves: GameMoves<typeof Game>;
+  playerID: string;
 }) {
+  useEffect(() => {
+    if (G.stage === "upload" && G.players[playerID].hand.length < 6) {
+      Promise.all(
+        Array.from({ length: 6 - G.players[playerID].hand.length }).map(() =>
+          fetch(`https://picsum.photos/512/512`).then((res) => res.url)
+        )
+      ).then((pictures) => {
+        moves.uploadPictures(pictures);
+      });
+    }
+  }, [G, playerID, moves]);
+
   const imgUrl = new URL(
-    `https://sdxl.longern.com?${new URLSearchParams({
-      prompt: "game",
-    }).toString()}`
+    `https://picsum.photos/512/512?s=${Math.random().toString().slice(2)}`
   );
-  return <img src={imgUrl.toString()} alt="img" />;
+  return G.stage === "upload" ? (
+    <img src={imgUrl.toString()} alt="" />
+  ) : G.stage === "pick" ? (
+    <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap" }}>
+      {G.players[playerID].hand.map((picture, i) => (
+        <img
+          style={{ flexBasis: "50%" }}
+          key={i}
+          src={picture}
+          alt=""
+          onClick={() => moves.pickPicture(picture, "description")}
+        />
+      ))}
+    </div>
+  ) : G.stage === "guess" ? (
+    <img
+      src={imgUrl.toString()}
+      alt=""
+      onClick={() => moves.guess(Math.floor(Math.random() * 6))}
+    />
+  ) : null;
 }
 
-function Client({ board, socket }) {
-  const [gameState, setGameState] = useState<GameState>(null);
+function Client({ board, socket }: { board: any; socket: WebSocket }) {
+  const [gameState, setGameState] = useState<GameState | null>(
+    Game.setup({
+      ctx: { numPlayers: 2 },
+    })
+  );
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const message = JSON.parse(event.data);
+      const message = event.data;
       if (message.type === "sync") {
         setGameState(message.state);
       }
@@ -109,23 +83,27 @@ function Client({ board, socket }) {
     };
   }, [socket]);
 
-  const moves = new Proxy(
-    {},
-    {
-      get: (_, prop) => {
-        return (...args: any[]) => {
-          socket.send(
-            JSON.stringify({
-              type: "action",
-              args: [prop, ...args],
-            })
-          );
-        };
-      },
-    }
+  const moves = useMemo(
+    () =>
+      new Proxy(
+        {},
+        {
+          get: (_, prop) => {
+            return (...args: any[]) => {
+              socket.send(
+                JSON.stringify({
+                  type: "action",
+                  args: [prop, ...args],
+                })
+              );
+            };
+          },
+        }
+      ),
+    [socket]
   );
 
-  return board({ G: gameState, moves });
+  return gameState && board({ G: gameState, moves, playerID: "0" });
 }
 
 function useSocket() {
@@ -145,11 +123,7 @@ function useSocket() {
 function GameApp() {
   const socket = useSocket();
 
-  return (
-    <ApiProvider>
-      <Client board={GameBoard} socket={socket} />
-    </ApiProvider>
-  );
+  return socket && <Client board={GameBoard} socket={socket} />;
 }
 
 export default GameApp;

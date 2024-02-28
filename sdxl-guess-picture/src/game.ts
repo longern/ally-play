@@ -8,20 +8,32 @@ export type GameState = {
 type Client = { G: GameState; playerID: string };
 
 export const Game = {
-  setup: () => {
+  setup: ({
+    ctx,
+  }: {
+    ctx: {
+      numPlayers: number;
+    };
+  }) => {
     return {
-      stage: "pick",
+      stage: "upload",
       description: "",
-      players: {},
+      players: Object.fromEntries(
+        Array.from({ length: ctx.numPlayers }, (_, i) => [
+          i.toString(),
+          { score: 0, hand: [], guess: 0 },
+        ])
+      ),
       board: [],
     } as GameState;
   },
 
   moves: {
-    uploadPicture({ G, playerID }: Client, picture: string) {
+    uploadPictures({ G, playerID }: Client, pictures: string[]) {
       if (G.stage !== "upload") return;
       if (G.players[playerID].hand.length >= 6) return;
-      G.players[playerID].hand.push(picture);
+      pictures.splice(6 - G.players[playerID].hand.length);
+      G.players[playerID].hand.push(...pictures);
       if (Object.values(G.players).every((p) => p.hand.length === 6)) {
         G.stage = "pick";
       }
@@ -37,9 +49,10 @@ export const Game = {
     pickConfusingPicture({ G, playerID }: Client, picture: string) {
       if (G.stage !== "confuse") return;
       if (Object.values(G.board).some((p) => p.playerID === playerID)) return;
-      const insertIndex = Math.floor(Math.random() * (G.board.length + 1));
+      const boardLength = G.board.length;
+      const insertIndex = Math.floor(Math.random() * (boardLength + 1));
       G.board.splice(insertIndex, 0, { playerID, picture });
-      if (G.board.length === Object.keys(G.players).length) {
+      if (boardLength + 1 === Object.keys(G.players).length) {
         G.stage = "guess";
       }
     },
