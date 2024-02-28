@@ -1,20 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import "./App.css";
-import { Game, GameState } from "./game";
+import { GuessPicture, GameState } from "./game";
 import { ParentSocket } from "./ParentSocket";
-
-type GameMoves<
-  T extends {
-    moves: Record<string, any>;
-  }
-> = {
-  [K in keyof T["moves"]]: (
-    ...args: T["moves"][K] extends (client: any, ...args: infer I) => void
-      ? I
-      : []
-  ) => void;
-};
+import { Client, GameMoves } from "./Client";
 
 function GameBoard({
   G,
@@ -22,7 +11,7 @@ function GameBoard({
   playerID,
 }: {
   G: GameState;
-  moves: GameMoves<typeof Game>;
+  moves: GameMoves<typeof GuessPicture>;
   playerID: string;
 }) {
   useEffect(() => {
@@ -63,96 +52,6 @@ function GameBoard({
   ) : null;
 }
 
-function Client({ board, socket }: { board: any; socket: WebSocket }) {
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [ctx, setCtx] = useState(null);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent<string>) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "setup") {
-        const { type, ...setupCtx } = message;
-        setCtx(setupCtx);
-        if (setupCtx.isHost) {
-          const gameState = Game.setup({ ctx });
-          setGameState(gameState);
-          Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
-            socket.send(
-              JSON.stringify({
-                type: "sync",
-                playerID: (i + 1).toString(),
-                state: gameState,
-              })
-            );
-          });
-        }
-      } else if (message.type === "sync") {
-        setGameState(message.state);
-      } else if (message.type === "action") {
-        const { playerID } = message;
-        const [func, ...args] = message.args;
-        Game.moves[func]({ G: gameState, playerID }, ...args);
-        setGameState(JSON.parse(JSON.stringify(gameState)));
-        Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
-          socket.send(
-            JSON.stringify({
-              type: "sync",
-              playerID: (i + 1).toString(),
-              state: gameState,
-            })
-          );
-        });
-      }
-    };
-    socket.addEventListener("message", handleMessage);
-    return () => {
-      socket.removeEventListener("message", handleMessage);
-    };
-  }, [ctx, gameState, socket]);
-
-  const moves = useMemo(
-    () =>
-      new Proxy(
-        {},
-        {
-          get: (_, prop) => {
-            return (...args: any[]) => {
-              if (ctx.isHost)
-                setGameState((value) => {
-                  const gameState = JSON.parse(JSON.stringify(value));
-                  Game.moves[prop]({ G: gameState, playerID: "0" }, ...args);
-                  return gameState;
-                });
-              else
-                socket.send(
-                  JSON.stringify({
-                    type: "action",
-                    args: [prop, ...args],
-                  })
-                );
-            };
-          },
-        }
-      ),
-    [ctx, socket]
-  );
-
-  useEffect(() => {
-    if (!ctx?.isHost || !gameState) return;
-    Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
-      socket.send(
-        JSON.stringify({
-          type: "sync",
-          playerID: (i + 1).toString(),
-          state: gameState,
-        })
-      );
-    });
-  }, [ctx, gameState, socket]);
-
-  return gameState && board({ G: gameState, moves, playerID: "0" });
-}
-
 function useSocket() {
   const [socket, setSocket] = useState<WebSocket>(null);
 
@@ -170,7 +69,9 @@ function useSocket() {
 function GameApp() {
   const socket = useSocket();
 
-  return socket && <Client board={GameBoard} socket={socket} />;
+  return (
+    socket && <Client game={GuessPicture} board={GameBoard} socket={socket} />
+  );
 }
 
 export default GameApp;

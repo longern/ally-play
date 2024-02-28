@@ -42,7 +42,7 @@ function GameContainer({
             isHost,
             numPlayers: isHost ? connections.length + 1 : undefined,
           }),
-          iframeRef.current!.contentWindow!.origin
+          new URL(iframeRef.current!.src).origin
         );
       } else if (isHost) {
         connections[parseInt(data.playerID) - 1].send(event.data);
@@ -52,8 +52,36 @@ function GameContainer({
       }
     };
     window.addEventListener("message", handleMessage);
+
+    const handlers = isHost
+      ? connections.map((connection, index) => {
+          const handler = (data: string) => {
+            const message = JSON.parse(data);
+            message.playerID = (index + 1).toString();
+            iframeRef.current!.contentWindow!.postMessage(
+              JSON.stringify(message),
+              new URL(iframeRef.current!.src).origin
+            );
+          };
+          connection.on("data", handler);
+          return handler;
+        })
+      : connections.map((connection) => {
+          const handler = (data: string) => {
+            iframeRef.current!.contentWindow!.postMessage(
+              data,
+              new URL(iframeRef.current!.src).origin
+            );
+          };
+          connection.on("data", handler);
+          return handler;
+        });
+
     return () => {
       window.removeEventListener("message", handleMessage);
+      handlers.forEach((handler, index) => {
+        connections[index].off("data", handler);
+      });
     };
   }, [isHost, connections, playerID]);
 

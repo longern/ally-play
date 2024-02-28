@@ -1,3 +1,5 @@
+import type { Game } from "./Client";
+
 export type GameState = {
   stage: "upload" | "pick" | "confuse" | "guess" | "reveal";
   description: string;
@@ -5,16 +7,8 @@ export type GameState = {
   board: { playerID: string; picture: string }[];
 };
 
-type Client = { G: GameState; playerID: string };
-
-export const Game = {
-  setup: ({
-    ctx,
-  }: {
-    ctx: {
-      numPlayers: number;
-    };
-  }) => {
+export const GuessPicture: Game<GameState> = {
+  setup: ({ ctx }) => {
     return {
       stage: "upload",
       description: "",
@@ -25,11 +19,11 @@ export const Game = {
         ])
       ),
       board: [],
-    } as GameState;
+    };
   },
 
   moves: {
-    uploadPictures({ G, playerID }: Client, pictures: string[]) {
+    uploadPictures({ G, playerID }, pictures: string[]) {
       if (G.stage !== "upload") return;
       if (G.players[playerID].hand.length >= 6) return;
       pictures.splice(6 - G.players[playerID].hand.length);
@@ -39,14 +33,14 @@ export const Game = {
       }
     },
 
-    pickPicture({ G, playerID }: Client, picture: string, description: string) {
+    pickPicture({ G, playerID }, picture: string, description: string) {
       if (G.stage !== "pick") return;
       G.description = description;
       G.board.push({ playerID, picture });
       G.stage = "confuse";
     },
 
-    pickConfusingPicture({ G, playerID }: Client, picture: string) {
+    pickConfusingPicture({ G, playerID }, picture: string) {
       if (G.stage !== "confuse") return;
       if (Object.values(G.board).some((p) => p.playerID === playerID)) return;
       const boardLength = G.board.length;
@@ -57,7 +51,7 @@ export const Game = {
       }
     },
 
-    guess({ G, playerID }: Client, guess: number) {
+    guess({ G, playerID }, guess: number) {
       if (G.stage !== "guess") return;
       G.players[playerID].guess = guess;
       if (Object.values(G.players).every((p) => p.guess)) {
@@ -65,7 +59,7 @@ export const Game = {
       }
     },
 
-    nextRound({ G }: Client) {
+    nextRound({ G }) {
       G.stage = "upload";
       G.description = "";
       G.board = [];
