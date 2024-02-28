@@ -56,6 +56,28 @@ const ApiProvider = ({ children }) => {
   );
 };
 
+class ParentSocket extends EventTarget {
+  #handler: (event: MessageEvent) => void;
+
+  constructor() {
+    super();
+    this.#handler = (event) => {
+      if (event.source !== window.parent) return;
+      const message = event.data;
+      this.dispatchEvent(new MessageEvent("message", { data: message }));
+    };
+    window.addEventListener("message", this.#handler);
+  }
+
+  send(data: any) {
+    window.parent.postMessage(data, window.parent.origin);
+  }
+
+  close() {
+    window.removeEventListener("message", this.#handler);
+  }
+}
+
 function GameBoard({
   G,
   moves,
@@ -71,28 +93,61 @@ function GameBoard({
   return <img src={imgUrl.toString()} alt="img" />;
 }
 
-function Client({ Board }) {
-  const api = React.useContext(ApiContext);
-  const state = React.useContext(GameStateContext);
+function Client({ board, socket }) {
+  const [gameState, setGameState] = useState<GameState>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "sync") {
+        setGameState(message.state);
+      }
+    };
+    socket.addEventListener("message", handleMessage);
+    return () => {
+      socket.removeEventListener("message", handleMessage);
+    };
+  }, [socket]);
 
   const moves = new Proxy(
     {},
     {
       get: (_, prop) => {
         return (...args: any[]) => {
-          api.sendAction(prop.toString(), args);
+          socket.send(
+            JSON.stringify({
+              type: "action",
+              args: [prop, ...args],
+            })
+          );
         };
       },
     }
   );
 
-  return <Board G={state} moves={moves} />;
+  return board({ G: gameState, moves });
+}
+
+function useSocket() {
+  const [socket, setSocket] = useState<WebSocket>(null);
+
+  useEffect(() => {
+    const socket = new ParentSocket() as unknown as WebSocket;
+    setSocket(socket);
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  return socket;
 }
 
 function GameApp() {
+  const socket = useSocket();
+
   return (
     <ApiProvider>
-      <Client Board={GameBoard} />
+      <Client board={GameBoard} socket={socket} />
     </ApiProvider>
   );
 }
