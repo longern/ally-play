@@ -14,7 +14,17 @@ function roomURL(roomID: string) {
   return url.toString();
 }
 
-function GameContainer({ onClose }) {
+function GameContainer({
+  onClose,
+  isHost,
+  connections,
+  playerID,
+}: {
+  onClose: () => void;
+  isHost: boolean;
+  connections: DataConnection[];
+  playerID: string;
+}) {
   void onClose;
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -22,13 +32,18 @@ function GameContainer({ onClose }) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      console.log(event.data);
+      if (isHost) {
+        connections[parseInt(event.data.playerID) - 1].send(event.data);
+      } else {
+        event.data.playerID = playerID;
+        connections[0].send(event.data);
+      }
     };
     window.addEventListener("message", handleMessage);
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, [isHost, connections, playerID]);
 
   return (
     <iframe
@@ -49,30 +64,40 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [roomID, setRoomID] = [useRoomID(), useSetRoomID()];
   const isHost = useIsHost();
+  const [playerID, setPlayerID] = useState<string | null>(isHost ? "0" : null);
   const { t } = useTranslation();
 
   const handleStartGame = useCallback(() => {
     setGameStarted(true);
-    connections.forEach((connection) => {
-      connection.send("start");
+    connections.forEach((connection, index) => {
+      connection.send({ type: "start", playerID: (index + 1).toString() });
     });
   }, [connections]);
 
   useEffect(() => {
-    if (!open || isHost) return;
+    if (!open || isHost || !roomID) return;
 
     const peer = new Peer();
     peer.on("open", () => {
+      const connection = peer.connect(`ally-play-${roomID}`);
+      connection.on("open", () => {
+        setConnections([connection]);
+        connection.on("data", (data: any) => {
+          if (data?.type === "start") {
+            setPlayerID(data.playerID.toString());
+            setGameStarted(true);
+          }
+        });
+      });
       setPeer(peer);
     });
-    peer.connect(`ally-play-${roomID}`);
 
     return () => {
       peer.destroy();
       setPeer(null);
-      setRoomID(undefined);
+      setConnections([]);
     };
-  }, [isHost, open, roomID, setRoomID]);
+  }, [isHost, open, roomID]);
 
   useEffect(() => {
     if (!open || !isHost) return;
@@ -85,17 +110,12 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     });
     peer.on("connection", (connection) => {
       setConnections((connections) => [...connections, connection]);
-      connection.on("data", (data) => {
-        if (data === "start") {
-          setGameStarted(true);
-        }
-      });
     });
 
     return () => {
       peer.destroy();
       setPeer(null);
-      setRoomID(undefined);
+      setConnections([]);
     };
   }, [isHost, open, setRoomID]);
 
@@ -108,7 +128,8 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     if (open) return;
     setGameStarted(false);
     setReady(false);
-  }, [open]);
+    setRoomID(undefined);
+  }, [open, setRoomID]);
 
   return (
     <HistoryDialog
@@ -118,7 +139,12 @@ function RoomDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
       onClose={onClose}
     >
       {gameStarted ? (
-        <GameContainer onClose={() => setGameStarted(false)} />
+        <GameContainer
+          onClose={() => setGameStarted(false)}
+          isHost={isHost}
+          connections={connections}
+          playerID={playerID}
+        />
       ) : (
         <Stack
           sx={{

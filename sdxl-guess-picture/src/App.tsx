@@ -64,9 +64,10 @@ function GameBoard({
 }
 
 function Client({ board, socket }: { board: any; socket: WebSocket }) {
+  const numPlayers = 2;
   const [gameState, setGameState] = useState<GameState | null>(
     Game.setup({
-      ctx: { numPlayers: 2 },
+      ctx: { numPlayers },
     })
   );
 
@@ -75,13 +76,27 @@ function Client({ board, socket }: { board: any; socket: WebSocket }) {
       const message = event.data;
       if (message.type === "sync") {
         setGameState(message.state);
+      } else if (message.type === "action") {
+        const { playerID } = message;
+        const [func, ...args] = message.args;
+        Game.moves[func]({ G: gameState, playerID }, ...args);
+        setGameState(JSON.parse(JSON.stringify(gameState)));
+        Array.from({ length: numPlayers }).forEach((_, i) => {
+          socket.send(
+            JSON.stringify({
+              type: "sync",
+              playerID: i.toString(),
+              state: gameState,
+            })
+          );
+        });
       }
     };
     socket.addEventListener("message", handleMessage);
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [socket]);
+  }, [gameState, socket]);
 
   const moves = useMemo(
     () =>
