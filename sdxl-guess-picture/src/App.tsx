@@ -64,28 +64,40 @@ function GameBoard({
 }
 
 function Client({ board, socket }: { board: any; socket: WebSocket }) {
-  const numPlayers = 2;
-  const [gameState, setGameState] = useState<GameState | null>(
-    Game.setup({
-      ctx: { numPlayers },
-    })
-  );
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [ctx, setCtx] = useState(null);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
-      if (message.type === "sync") {
+    const handleMessage = (event: MessageEvent<string>) => {
+      const message = JSON.parse(event.data);
+      if (message.type === "setup") {
+        const { type, ...setupCtx } = message;
+        setCtx(setupCtx);
+        if (setupCtx.isHost) {
+          const gameState = Game.setup({ ctx });
+          setGameState(gameState);
+          Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
+            socket.send(
+              JSON.stringify({
+                type: "sync",
+                playerID: (i + 1).toString(),
+                state: gameState,
+              })
+            );
+          });
+        }
+      } else if (message.type === "sync") {
         setGameState(message.state);
       } else if (message.type === "action") {
         const { playerID } = message;
         const [func, ...args] = message.args;
         Game.moves[func]({ G: gameState, playerID }, ...args);
         setGameState(JSON.parse(JSON.stringify(gameState)));
-        Array.from({ length: numPlayers }).forEach((_, i) => {
+        Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
           socket.send(
             JSON.stringify({
               type: "sync",
-              playerID: i.toString(),
+              playerID: (i + 1).toString(),
               state: gameState,
             })
           );
@@ -96,7 +108,7 @@ function Client({ board, socket }: { board: any; socket: WebSocket }) {
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [gameState, socket]);
+  }, [ctx, gameState, socket]);
 
   const moves = useMemo(
     () =>
@@ -105,18 +117,38 @@ function Client({ board, socket }: { board: any; socket: WebSocket }) {
         {
           get: (_, prop) => {
             return (...args: any[]) => {
-              socket.send(
-                JSON.stringify({
-                  type: "action",
-                  args: [prop, ...args],
-                })
-              );
+              if (ctx.isHost)
+                setGameState((value) => {
+                  const gameState = JSON.parse(JSON.stringify(value));
+                  Game.moves[prop]({ G: gameState, playerID: "0" }, ...args);
+                  return gameState;
+                });
+              else
+                socket.send(
+                  JSON.stringify({
+                    type: "action",
+                    args: [prop, ...args],
+                  })
+                );
             };
           },
         }
       ),
-    [socket]
+    [ctx, socket]
   );
+
+  useEffect(() => {
+    if (!ctx?.isHost || !gameState) return;
+    Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
+      socket.send(
+        JSON.stringify({
+          type: "sync",
+          playerID: (i + 1).toString(),
+          state: gameState,
+        })
+      );
+    });
+  }, [ctx, gameState, socket]);
 
   return gameState && board({ G: gameState, moves, playerID: "0" });
 }

@@ -30,12 +30,24 @@ function GameContainer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (event: MessageEvent<string>) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      if (isHost) {
-        connections[parseInt(event.data.playerID) - 1].send(event.data);
+      const data = JSON.parse(event.data);
+
+      if (data.type === "setup") {
+        iframeRef.current!.contentWindow!.postMessage(
+          JSON.stringify({
+            type: "setup",
+            playerID,
+            isHost,
+            numPlayers: isHost ? connections.length + 1 : undefined,
+          }),
+          iframeRef.current!.contentWindow!.origin
+        );
+      } else if (isHost) {
+        connections[parseInt(data.playerID) - 1].send(event.data);
       } else {
-        event.data.playerID = playerID;
+        data.playerID = playerID;
         connections[0].send(event.data);
       }
     };
