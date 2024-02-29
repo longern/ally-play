@@ -6,22 +6,33 @@ type Ctx = {
   isHost: boolean;
 };
 
-export type Game<GameState = any> = {
-  setup: ({ ctx }: { ctx: Ctx }) => GameState;
-  moves: Record<
-    string,
-    (
-      client: {
-        G: GameState;
-        ctx: Ctx;
-        playerID: string;
-      },
-      ...args: any[]
-    ) => void
-  >;
+type GameMoveFunction<GameState> = (
+  client: {
+    G: GameState;
+    ctx: Ctx;
+    playerID: string;
+  },
+  ...args: any[]
+) => void;
+
+export type Game<
+  GameState,
+  GameMoves extends {
+    [K in keyof GameMoves]: GameMoveFunction<GameState>;
+  }
+> = {
+  setup: (ctx: any) => GameState;
+  moves: GameMoves;
 };
 
-export type GameMoves<T extends Game> = {
+export function makeGame<
+  GameState,
+  GameMoves extends Record<string, GameMoveFunction<GameState>>
+>(game: Game<GameState, GameMoves>) {
+  return game;
+}
+
+export type GameClientMoves<T extends Game<any, any>> = {
   [K in keyof T["moves"]]: (
     ...args: T["moves"][K] extends (client: any, ...args: infer I) => void
       ? I
@@ -34,7 +45,7 @@ export function Client<GameState>({
   board,
   socket,
 }: {
-  game: Game<GameState>;
+  game: Game<GameState, any>;
   board: any;
   socket: WebSocket;
 }) {
@@ -92,7 +103,7 @@ export function Client<GameState>({
             };
           },
         }
-      ),
+      ) as GameClientMoves<typeof game>,
     [game, ctx, playerID, socket]
   );
 

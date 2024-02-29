@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import { GuessPicture, GameState } from "./game";
 import { ParentSocket } from "./ParentSocket";
-import { Client, GameMoves } from "./Client";
+import { Client, GameClientMoves } from "./Client";
 
 function GameBoard({
   G,
@@ -11,7 +11,7 @@ function GameBoard({
   playerID,
 }: {
   G: GameState;
-  moves: GameMoves<typeof GuessPicture>;
+  moves: GameClientMoves<typeof GuessPicture>;
   playerID: string;
 }) {
   useEffect(() => {

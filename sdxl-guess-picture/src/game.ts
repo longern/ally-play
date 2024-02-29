@@ -1,4 +1,4 @@
-import type { Game } from "./Client";
+import { makeGame } from "./Client";
 
 export type GameState = {
   stage: "upload" | "pick" | "confuse" | "guess" | "reveal";
@@ -7,7 +7,7 @@ export type GameState = {
   board: { playerID: string; picture: string }[];
 };
 
-export const GuessPicture: Game<GameState> = {
+export const GuessPicture = makeGame({
   setup: ({ ctx }) => {
     return {
       stage: "upload",
@@ -19,7 +19,7 @@ export const GuessPicture: Game<GameState> = {
         ])
       ),
       board: [],
-    };
+    } as GameState;
   },
 
   moves: {
@@ -68,4 +68,4 @@ export const GuessPicture: Game<GameState> = {
       }
     },
   },
-};
+});
