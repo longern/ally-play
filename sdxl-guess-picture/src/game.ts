@@ -13,8 +13,8 @@ export const GuessPicture: Game<GameState> = {
       stage: "upload",
       description: "",
       players: Object.fromEntries(
-        Array.from({ length: ctx.numPlayers }, (_, i) => [
-          i.toString(),
+        ctx.playOrder.map((player) => [
+          player,
           { score: 0, hand: [], guess: 0 },
         ])
       ),

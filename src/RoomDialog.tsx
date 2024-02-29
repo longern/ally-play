@@ -39,8 +39,13 @@ function GameContainer({
           JSON.stringify({
             type: "setup",
             playerID,
-            isHost,
-            numPlayers: isHost ? connections.length + 1 : undefined,
+            ctx: {
+              playOrder: isHost
+                ? connections.map((_, i) => (i + 1).toString())
+                : undefined,
+              isHost,
+              numPlayers: isHost ? connections.length + 1 : undefined,
+            },
           }),
           new URL(iframeRef.current!.src).origin
         );

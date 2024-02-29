@@ -2,7 +2,7 @@ import { createElement, useEffect, useMemo, useState } from "react";
 
 type Ctx = {
   numPlayers: number;
-  playerID: string;
+  playOrder: string[];
   isHost: boolean;
 };
 
@@ -25,7 +25,7 @@ export type GameMoves<T extends Game> = {
   [K in keyof T["moves"]]: (
     ...args: T["moves"][K] extends (client: any, ...args: infer I) => void
       ? I
-      : []
+      : never
   ) => void;
 };
 
@@ -39,16 +39,18 @@ export function Client<GameState>({
   socket: WebSocket;
 }) {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [ctx, setCtx] = useState<Ctx>(null);
+  const [ctx, setCtx] = useState<Ctx | null>(null);
+  const [playerID, setPlayerID] = useState<string | null>(null);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent<string>) => {
       const message = JSON.parse(event.data);
       if (message.type === "setup") {
-        const { type, ...setupCtx } = message;
-        setCtx(setupCtx);
-        if (setupCtx.isHost) {
-          const gameState = game.setup({ ctx: setupCtx });
+        const { playerID, ctx } = message;
+        setCtx(ctx);
+        setPlayerID(playerID);
+        if (ctx.isHost) {
+          const gameState = game.setup({ ctx });
           setGameState(gameState);
         }
       } else if (message.type === "sync") {
@@ -76,12 +78,9 @@ export function Client<GameState>({
             return (...args: any[]) => {
               if (ctx.isHost)
                 setGameState((value) => {
-                  const gameState = JSON.parse(JSON.stringify(value));
-                  game.moves[prop](
-                    { G: gameState, ctx, playerID: ctx.playerID },
-                    ...args
-                  );
-                  return gameState;
+                  const G = JSON.parse(JSON.stringify(value));
+                  game.moves[prop]({ G, ctx, playerID }, ...args);
+                  return G;
                 });
               else
                 socket.send(
@@ -94,24 +93,22 @@ export function Client<GameState>({
           },
         }
       ),
-    [game, ctx, socket]
+    [game, ctx, playerID, socket]
   );
 
   useEffect(() => {
     if (!ctx?.isHost || !gameState) return;
-    Array.from({ length: ctx.numPlayers - 1 }).forEach((_, i) => {
+    ctx.playOrder.forEach((player) => {
+      if (player === playerID) return;
       socket.send(
         JSON.stringify({
           type: "sync",
-          playerID: (i + 1).toString(),
+          player,
           state: gameState,
         })
       );
     });
-  }, [ctx, gameState, socket]);
+  }, [ctx, gameState, playerID, socket]);
 
-  return (
-    gameState &&
-    createElement(board, { G: gameState, moves, playerID: ctx.playerID })
-  );
+  return gameState && createElement(board, { G: gameState, moves, playerID });
 }
