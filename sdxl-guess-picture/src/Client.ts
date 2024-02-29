@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useState } from "react";
+import { ReactNode, createElement, useEffect, useMemo, useState } from "react";
 
 type Ctx = {
   numPlayers: number;
@@ -25,6 +25,18 @@ export type Game<
   moves: GameMoves;
 };
 
+export type GameClientMoves<Moves> = {
+  [K in keyof Moves]: (
+    ...args: Moves[K] extends (client: any, ...args: infer I) => void
+      ? I
+      : never
+  ) => void;
+};
+
+export type GameBoardComponent<T> = T extends Game<infer G, infer M>
+  ? (props: { G: G; moves: GameClientMoves<M>; playerID: string }) => ReactNode
+  : never;
+
 export function makeGame<
   GameState,
   GameMoves extends Record<string, GameMoveFunction<GameState>>
@@ -32,23 +44,16 @@ export function makeGame<
   return game;
 }
 
-export type GameClientMoves<T extends Game<any, any>> = {
-  [K in keyof T["moves"]]: (
-    ...args: T["moves"][K] extends (client: any, ...args: infer I) => void
-      ? I
-      : never
-  ) => void;
-};
-
-export function Client<GameState>({
+export function Client<T extends Game<any, any>>({
   game,
   board,
   socket,
 }: {
-  game: Game<GameState, any>;
-  board: any;
+  game: T;
+  board: GameBoardComponent<T>;
   socket: WebSocket;
-}) {
+}): ReactNode {
+  type GameState = ReturnType<T["setup"]>;
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [playerID, setPlayerID] = useState<string | null>(null);

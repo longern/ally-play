@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from "react";
 
 import "./App.css";
-import { GuessPicture, GameState } from "./game";
+import { GuessPicture } from "./game";
 import { ParentSocket } from "./ParentSocket";
-import { Client, GameClientMoves } from "./Client";
+import { Client, GameBoardComponent } from "./Client";
 
-function GameBoard({
+const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
   G,
   moves,
   playerID,
-}: {
-  G: GameState;
-  moves: GameClientMoves<typeof GuessPicture>;
-  playerID: string;
 }) {
   useEffect(() => {
     if (G.stage === "upload" && G.players[playerID].hand.length < 6) {
@@ -52,7 +48,7 @@ function GameBoard({
   ) : (
     G.stage
   );
-}
+};
 
 function useSocket() {
   const [socket, setSocket] = useState<WebSocket>(null);
