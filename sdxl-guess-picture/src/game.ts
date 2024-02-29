@@ -55,39 +55,46 @@ export const GuessPicture = makeGame({
 
     guess({ G, playerID }, guess: number) {
       if (G.stage !== "guess") return;
-      G.players[playerID].guess = guess;
-      if (Object.values(G.players).every((p) => p.guess)) {
-        G.stage = "reveal";
 
-        const answer = G.board.findIndex((p) => p.playerID === G.currentPlayer);
-        if (
-          Object.values(G.players).every((p) => p.guess === answer) ||
-          Object.values(G.players).every((p) => p.guess !== answer)
-        ) {
-          for (const p in G.players) {
-            if (p !== G.currentPlayer) {
-              G.players[p].score += 2;
-            }
+      G.players[playerID].guess = guess;
+      const guesses = Object.fromEntries(
+        Object.entries(G.players)
+          .filter(([playerID]) => playerID !== G.currentPlayer)
+          .map(([playerID, value]) => [playerID, value.guess])
+      );
+
+      if (!Object.values(guesses).every((guess) => guess !== 0)) return;
+
+      // Everyone has made a guess
+      G.stage = "reveal";
+
+      const answer = G.board.findIndex((p) => p.playerID === G.currentPlayer);
+      if (
+        Object.values(guesses).every((guess) => guess === answer) ||
+        Object.values(guesses).every((guess) => guess !== answer)
+      ) {
+        for (const p in guesses) {
+          G.players[p].score += 2;
+        }
+      } else {
+        let scores: Record<string, number> = {};
+        for (const p in guesses) {
+          if (guesses[p] === answer) {
+            scores[p] = (scores[p] || 0) + 2;
+            scores[G.currentPlayer] = (scores[G.currentPlayer] || 0) + 1;
+          } else {
+            const owner = G.board[G.players[p].guess].playerID;
+            scores[owner] = (scores[owner] || 0) + 1;
           }
-        } else {
-          let scores = {};
-          for (const p in G.players) {
-            if (G.players[p].guess === answer) {
-              scores[p] = (scores[p] || 0) + 2;
-              scores[G.currentPlayer] = (scores[G.currentPlayer] || 0) + 1;
-            } else {
-              const owner = G.board[G.players[p].guess].playerID;
-              scores[owner] = (scores[owner] || 0) + 1;
-            }
-          }
-          for (const p in scores) {
-            G.players[p].score += scores[p];
-          }
+        }
+        for (const p in scores) {
+          G.players[p].score += scores[p];
         }
       }
     },
 
     nextRound({ G, ctx: { playOrder } }) {
+      if (G.stage !== "reveal") return;
       G.stage = "upload";
       G.description = "";
       G.board = [];
