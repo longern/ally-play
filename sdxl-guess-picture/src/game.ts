@@ -3,7 +3,10 @@ import { makeGame } from "./Client";
 export type GameState = {
   stage: "upload" | "pick" | "confuse" | "guess" | "reveal";
   description: string;
-  players: Record<string, { score: number; hand: string[]; guess: number }>;
+  players: Record<
+    string,
+    { score: number; hand: string[]; guess: number | undefined }
+  >;
   board: { playerID: string; picture: string }[];
   currentPlayer: string;
 };
@@ -16,7 +19,7 @@ export const GuessPicture = makeGame({
       players: Object.fromEntries(
         ctx.playOrder.map((player) => [
           player,
-          { score: 0, hand: [], guess: 0 },
+          { score: 0, hand: [], guess: undefined },
         ])
       ),
       board: [],
@@ -39,6 +42,8 @@ export const GuessPicture = makeGame({
       if (G.stage !== "pick") return;
       G.description = description;
       G.board.push({ playerID, picture });
+      const handIndex = G.players[playerID].hand.indexOf(picture);
+      G.players[playerID].hand.splice(handIndex, 1);
       G.stage = "confuse";
     },
 
@@ -48,6 +53,8 @@ export const GuessPicture = makeGame({
       const boardLength = G.board.length;
       const insertIndex = Math.floor(Math.random() * (boardLength + 1));
       G.board.splice(insertIndex, 0, { playerID, picture });
+      const handIndex = G.players[playerID].hand.indexOf(picture);
+      G.players[playerID].hand.splice(handIndex, 1);
       if (boardLength + 1 === Object.keys(G.players).length) {
         G.stage = "guess";
       }
@@ -63,7 +70,7 @@ export const GuessPicture = makeGame({
           .map(([playerID, value]) => [playerID, value.guess])
       );
 
-      if (!Object.values(guesses).every((guess) => guess !== 0)) return;
+      if (!Object.values(guesses).every((guess) => guess !== undefined)) return;
 
       // Everyone has made a guess
       G.stage = "reveal";
@@ -99,7 +106,7 @@ export const GuessPicture = makeGame({
       G.description = "";
       G.board = [];
       for (const playerID in G.players) {
-        G.players[playerID].guess = 0;
+        G.players[playerID].guess = undefined;
       }
       const currentPlayerIndex = playOrder.indexOf(G.currentPlayer);
       G.currentPlayer = playOrder[(currentPlayerIndex + 1) % playOrder.length];

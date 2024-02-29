@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Box,
   Button,
   Card,
   CardMedia,
@@ -32,12 +33,24 @@ function ImageGrid({
       <Grid container spacing={2}>
         {pictures.map((picture, i) => (
           <Grid item key={i} xs={6} md={4}>
-            <Card raised={i === selected}>
+            <Card
+              variant="outlined"
+              sx={{
+                opacity: selected === undefined ? 1 : selected === i ? 1 : 0.3,
+                transform:
+                  selected !== undefined && selected !== i
+                    ? "scale(0.9)"
+                    : "none",
+                transition: "opacity 0.2s, transform 0.2s",
+              }}
+            >
               <CardMedia sx={{ display: "flex" }}>
                 <img
                   src={picture}
                   alt=""
-                  onClick={() => onSelectedChange?.(i)}
+                  onClick={() =>
+                    onSelectedChange?.(selected !== i ? i : undefined)
+                  }
                 />
               </CardMedia>
             </Card>
@@ -83,7 +96,7 @@ const Pick: GameBoardComponent<typeof GuessPicture> = function ({
   moves,
   playerID,
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
 
   return (
@@ -105,7 +118,7 @@ const Pick: GameBoardComponent<typeof GuessPicture> = function ({
           <Stack alignItems="center">
             <Button
               variant="outlined"
-              disabled={selected === null}
+              disabled={selected === undefined}
               onClick={() =>
                 moves.pickPicture(
                   G.players[playerID].hand[selected],
@@ -129,7 +142,7 @@ const Confuse: GameBoardComponent<typeof GuessPicture> = function ({
   moves,
   playerID,
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | undefined>(undefined);
 
   return playerID === G.currentPlayer ? (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
@@ -156,7 +169,7 @@ const Confuse: GameBoardComponent<typeof GuessPicture> = function ({
       <Stack alignItems="center">
         <Button
           variant="outlined"
-          disabled={selected === null}
+          disabled={selected === undefined}
           onClick={() =>
             moves.pickConfusingPicture(G.players[playerID].hand[selected])
           }
@@ -173,7 +186,7 @@ const Guess: GameBoardComponent<typeof GuessPicture> = function ({
   moves,
   playerID,
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | undefined>(undefined);
 
   return playerID === G.currentPlayer ? (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
@@ -193,10 +206,10 @@ const Guess: GameBoardComponent<typeof GuessPicture> = function ({
         <Button
           variant="outlined"
           disabled={
-            selected === null ||
+            selected === undefined ||
             G.currentPlayer === playerID ||
             G.board[selected].playerID === playerID ||
-            G.players[playerID].guess !== 0
+            G.players[playerID].guess !== undefined
           }
           onClick={() => moves.guess(selected)}
         >
@@ -207,21 +220,72 @@ const Guess: GameBoardComponent<typeof GuessPicture> = function ({
   );
 };
 
+const Reveal: GameBoardComponent<typeof GuessPicture> = function ({
+  G,
+  moves,
+  playerID,
+}) {
+  return (
+    <Container maxWidth="md" sx={{ paddingY: 2 }}>
+      <ImageGrid
+        pictures={G.board.map((p) => p.picture)}
+        selected={G.board.findIndex((p) => p.playerID === G.currentPlayer)}
+      />
+      <Stack alignItems="center" sx={{ padding: 2 }}>
+        {G.description || " "}
+      </Stack>
+      {playerID === G.currentPlayer && (
+        <Stack alignItems="center">
+          <Button
+            variant="outlined"
+            onClick={() => {
+              moves.nextRound();
+            }}
+          >
+            OK
+          </Button>
+        </Stack>
+      )}
+    </Container>
+  );
+};
+
 const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
   G,
   moves,
   playerID,
 }) {
-  return G.stage === "upload" ? (
-    <Upload G={G} moves={moves} playerID={playerID} />
-  ) : G.stage === "pick" ? (
-    <Pick G={G} moves={moves} playerID={playerID} />
-  ) : G.stage === "confuse" ? (
-    <Confuse G={G} moves={moves} playerID={playerID} />
-  ) : G.stage === "guess" ? (
-    <Guess G={G} moves={moves} playerID={playerID} />
-  ) : (
-    G.stage
+  return (
+    <Stack direction="row" height="100%">
+      <Box sx={{ width: 60, flexShrink: 0 }}>
+        {Object.entries(G.players).map(([id, player]) => (
+          <Box
+            key={id}
+            sx={{
+              padding: 1,
+              backgroundColor: id === G.currentPlayer ? "lightgreen" : "white",
+            }}
+          >
+            {id}: {player.score}
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ flexGrow: 1 }}>
+        {G.stage === "upload" ? (
+          <Upload G={G} moves={moves} playerID={playerID} />
+        ) : G.stage === "pick" ? (
+          <Pick G={G} moves={moves} playerID={playerID} />
+        ) : G.stage === "confuse" ? (
+          <Confuse G={G} moves={moves} playerID={playerID} />
+        ) : G.stage === "guess" ? (
+          <Guess G={G} moves={moves} playerID={playerID} />
+        ) : G.stage === "reveal" ? (
+          <Reveal G={G} moves={moves} playerID={playerID} />
+        ) : (
+          G.stage
+        )}
+      </Box>
+    </Stack>
   );
 };
 
