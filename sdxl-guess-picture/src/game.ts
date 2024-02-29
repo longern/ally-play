@@ -5,6 +5,7 @@ export type GameState = {
   description: string;
   players: Record<string, { score: number; hand: string[]; guess: number }>;
   board: { playerID: string; picture: string }[];
+  currentPlayer: string;
 };
 
 export const GuessPicture = makeGame({
@@ -19,6 +20,7 @@ export const GuessPicture = makeGame({
         ])
       ),
       board: [],
+      currentPlayer: ctx.playOrder[0],
     } as GameState;
   },
 
@@ -56,16 +58,44 @@ export const GuessPicture = makeGame({
       G.players[playerID].guess = guess;
       if (Object.values(G.players).every((p) => p.guess)) {
         G.stage = "reveal";
+
+        const answer = G.board.findIndex((p) => p.playerID === G.currentPlayer);
+        if (
+          Object.values(G.players).every((p) => p.guess === answer) ||
+          Object.values(G.players).every((p) => p.guess !== answer)
+        ) {
+          for (const p in G.players) {
+            if (p !== G.currentPlayer) {
+              G.players[p].score += 2;
+            }
+          }
+        } else {
+          let scores = {};
+          for (const p in G.players) {
+            if (G.players[p].guess === answer) {
+              scores[p] = (scores[p] || 0) + 2;
+              scores[G.currentPlayer] = (scores[G.currentPlayer] || 0) + 1;
+            } else {
+              const owner = G.board[G.players[p].guess].playerID;
+              scores[owner] = (scores[owner] || 0) + 1;
+            }
+          }
+          for (const p in scores) {
+            G.players[p].score += scores[p];
+          }
+        }
       }
     },
 
-    nextRound({ G }) {
+    nextRound({ G, ctx: { playOrder } }) {
       G.stage = "upload";
       G.description = "";
       G.board = [];
       for (const playerID in G.players) {
         G.players[playerID].guess = 0;
       }
+      const currentPlayerIndex = playOrder.indexOf(G.currentPlayer);
+      G.currentPlayer = playOrder[(currentPlayerIndex + 1) % playOrder.length];
     },
   },
 });

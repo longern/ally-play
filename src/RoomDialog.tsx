@@ -41,7 +41,7 @@ function GameContainer({
             playerID,
             ctx: {
               playOrder: isHost
-                ? connections.map((_, i) => (i + 1).toString())
+                ? ["0", ...connections.map((_, i) => (i + 1).toString())]
                 : undefined,
               isHost,
               numPlayers: isHost ? connections.length + 1 : undefined,

@@ -21,7 +21,7 @@ export type Game<
     [K in keyof GameMoves]: GameMoveFunction<GameState>;
   }
 > = {
-  setup: (ctx: any) => GameState;
+  setup: ({ ctx }: { ctx: Ctx }) => GameState;
   moves: GameMoves;
 };
 
@@ -119,12 +119,14 @@ export function Client<T extends Game<any, any>>({
       socket.send(
         JSON.stringify({
           type: "sync",
-          player,
+          playerID: player,
           state: gameState,
         })
       );
     });
   }, [ctx, gameState, playerID, socket]);
 
-  return gameState && createElement(board, { G: gameState, moves, playerID });
+  return (
+    gameState && ctx && createElement(board, { G: gameState, moves, playerID })
+  );
 }
