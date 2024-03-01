@@ -61,11 +61,11 @@ function ImageGrid({
   );
 }
 
-const Upload: GameBoardComponent<typeof GuessPicture> = function ({
-  G,
-  moves,
-  playerID,
-}) {
+type GuessPictureBoardProps = Parameters<
+  GameBoardComponent<typeof GuessPicture>
+>[0];
+
+function Upload({ G, moves, playerID }: GuessPictureBoardProps) {
   useEffect(() => {
     if (!G.players[playerID] || G.players[playerID].hand.length >= 6) return;
     Promise.all(
@@ -89,13 +89,9 @@ const Upload: GameBoardComponent<typeof GuessPicture> = function ({
       <CircularProgress />
     </Stack>
   );
-};
+}
 
-const Pick: GameBoardComponent<typeof GuessPicture> = function ({
-  G,
-  moves,
-  playerID,
-}) {
+function Pick({ G, moves, playerID }: GuessPictureBoardProps) {
   const [selected, setSelected] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
 
@@ -135,13 +131,9 @@ const Pick: GameBoardComponent<typeof GuessPicture> = function ({
       )}
     </Container>
   );
-};
+}
 
-const Confuse: GameBoardComponent<typeof GuessPicture> = function ({
-  G,
-  moves,
-  playerID,
-}) {
+function Confuse({ G, moves, playerID }: GuessPictureBoardProps) {
   const [selected, setSelected] = useState<number | undefined>(undefined);
 
   return playerID === G.currentPlayer ? (
@@ -179,13 +171,9 @@ const Confuse: GameBoardComponent<typeof GuessPicture> = function ({
       </Stack>
     </Container>
   );
-};
+}
 
-const Guess: GameBoardComponent<typeof GuessPicture> = function ({
-  G,
-  moves,
-  playerID,
-}) {
+function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
   const [selected, setSelected] = useState<number | undefined>(undefined);
 
   return playerID === G.currentPlayer ? (
@@ -218,13 +206,9 @@ const Guess: GameBoardComponent<typeof GuessPicture> = function ({
       </Stack>
     </Container>
   );
-};
+}
 
-const Reveal: GameBoardComponent<typeof GuessPicture> = function ({
-  G,
-  moves,
-  playerID,
-}) {
+function Reveal({ G, moves, playerID }: GuessPictureBoardProps) {
   return (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
       <ImageGrid
@@ -248,7 +232,7 @@ const Reveal: GameBoardComponent<typeof GuessPicture> = function ({
       )}
     </Container>
   );
-};
+}
 
 const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
   G,
