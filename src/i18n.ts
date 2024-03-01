@@ -4,11 +4,14 @@ import { initReactI18next } from "react-i18next";
 const resources = {
   en: {
     translation: {
+      "Cancel ready": "Cancel ready",
       "Create room": "Create room",
+      "Get ready": "Get ready",
       "Join room": "Join room",
       "Not ready": "Not ready",
       Start: "Start",
       Ready: "Ready",
+      Reload: "Reload",
     },
   },
 };
