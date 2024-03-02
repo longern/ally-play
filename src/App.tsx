@@ -291,6 +291,9 @@ function Fallback({ error }) {
 
 function App() {
   const [roomDialogOpen, setRoomDialogOpen] = React.useState(false);
+  const gameRef = React.useRef<Settings["installedGames"][number] | undefined>(
+    undefined
+  );
   const setRoomID = useSetRoomID();
   const setIsHost = useSetIsHost();
 
@@ -304,10 +307,14 @@ function App() {
     });
   }, []);
 
-  const handleCreateRoom = useCallback(() => {
-    setIsHost(true);
-    setRoomDialogOpen(true);
-  }, [setIsHost]);
+  const handleCreateRoom = useCallback(
+    (game: Settings["installedGames"][number]) => {
+      gameRef.current = game;
+      setIsHost(true);
+      setRoomDialogOpen(true);
+    },
+    [setIsHost]
+  );
 
   const handleSearch = useCallback(
     (search: string) => {
@@ -346,8 +353,12 @@ function App() {
         </Stack>
         <Suspense>
           <RoomDialog
+            gameRef={gameRef}
             open={roomDialogOpen}
-            onClose={() => setRoomDialogOpen(false)}
+            onClose={() => {
+              gameRef.current = undefined;
+              setRoomDialogOpen(false);
+            }}
           />
         </Suspense>
       </ThemeProvider>

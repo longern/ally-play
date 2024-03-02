@@ -1,5 +1,5 @@
 import Peer, { DataConnection } from "peerjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type LobbyState = {
   roomID: string;
@@ -9,7 +9,8 @@ type LobbyState = {
     url: string;
     icon?: string;
   } | null;
-  players: {
+  runningMatch: boolean;
+  matchData: {
     playerID: string;
     playerName: string;
     ready: boolean;
@@ -17,37 +18,36 @@ type LobbyState = {
   }[];
 };
 
-export function createLobby({
-  game,
-  handleStart,
-}: {
+export function createLobby(options?: {
   game?: {
     name: string;
     url: string;
     icon?: string;
   };
-  handleStart: (game: { name: string; url: string }) => void;
 }) {
+  options = options ?? {};
   let peer: Peer | null = null;
   const connections = new Map<string, DataConnection>();
 
   let state: LobbyState = {
     roomID: "",
     hostID: "",
-    game,
-    players: [],
+    game: options.game,
+    runningMatch: false,
+    matchData: [],
   };
+  let playerID = undefined;
 
-  function handleDataFromGuest(playerID: string, data: any) {
+  function handleDataFromGuest(guestID: string, data: any) {
     if (data?.type === "metadata") {
-      function updatePlayer(playerDelta: Partial<LobbyState["players"][0]>) {
-        state.players = state.players.map((player) =>
-          player.playerID === playerID ? { ...player, ...playerDelta } : player
+      function updatePlayer(playerDelta: Partial<LobbyState["matchData"][0]>) {
+        state.matchData = state.matchData.map((player) =>
+          player.playerID === guestID ? { ...player, ...playerDelta } : player
         );
         connections.forEach((connection) => {
           connection.send({ type: "metadata", state });
         });
-        subscriptions.forEach((callback) => callback(state));
+        publish();
       }
       const { player: playerDelta } = data;
       updatePlayer(playerDelta);
@@ -55,14 +55,28 @@ export function createLobby({
   }
 
   function handleDataFromHost(data: any) {
-    if (data?.type === "metadata") {
+    if (data?.type === "join") {
+      const { player: newPlayer }: { player: string } = data;
+      playerID = newPlayer;
+      publish();
+    } else if (data?.type === "metadata") {
       const { state: newState }: { state: LobbyState } = data;
       state = newState;
-      subscriptions.forEach((callback) => callback(state));
-    } else if (data?.type === "start") {
-      handleStart(state.game!);
+      publish();
     }
   }
+
+  const changeGame = function (game: {
+    name: string;
+    url: string;
+    icon?: string;
+  }) {
+    state = { ...state, game };
+    connections.forEach((connection) => {
+      connection.send({ type: "metadata", state });
+    });
+    publish();
+  };
 
   const createRoom = async function () {
     return new Promise<string>((resolve) => {
@@ -75,80 +89,185 @@ export function createLobby({
           connection.on("data", (data: any) => {
             handleDataFromGuest(playerID, data);
           });
+          connection.on("open", () => {
+            connection.send({ type: "join", player: playerID });
+            connections.forEach((connection) => {
+              connection.send({ type: "metadata", state });
+            });
+          });
+          state.matchData.push({
+            playerID,
+            playerName: `Player ${state.matchData.length + 1}`,
+            ready: false,
+          });
+          publish();
         });
         resolve(id);
-        state.roomID = id;
+        state = {
+          game: state.game,
+          roomID: id,
+          hostID: "0",
+          runningMatch: false,
+          matchData: [{ playerID: "0", playerName: "Host", ready: true }],
+        };
+        playerID = "0";
+        publish();
       });
     });
   };
 
-  const joinMatch = function (
-    roomID: string,
-    { playerName }: { playerName: string }
-  ) {
+  const createServer = function (iframe: HTMLIFrameElement) {
+    const isHost = playerID === state.hostID;
+    const handleMessage = (event: MessageEvent<string>) => {
+      if (event.source !== iframe.contentWindow) return;
+      const data = JSON.parse(event.data);
+
+      if (data.type === "setup") {
+        iframe.contentWindow!.postMessage(
+          JSON.stringify({
+            type: "setup",
+            playerID,
+            ctx: {
+              playOrder: state.matchData.map((player) => player.playerID),
+              isHost,
+              numPlayers: state.matchData.length,
+            },
+          }),
+          new URL(iframe.src).origin
+        );
+      } else if (isHost) {
+        connections.get(data.playerID).send(event.data);
+      } else {
+        data.playerID = playerID;
+        connections.get(state.roomID).send(event.data);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    const handlers = isHost
+      ? Array.from(connections).map(([playerID, connection]) => {
+          const handler = (data: string) => {
+            const message = JSON.parse(data);
+            message.playerID = playerID;
+            iframe.contentWindow!.postMessage(
+              JSON.stringify(message),
+              new URL(iframe.src).origin
+            );
+          };
+          connection.on("data", handler);
+          return [playerID, handler] as const;
+        })
+      : Array.from(connections).map(([key, connection]) => {
+          const handler = (data: string) => {
+            iframe.contentWindow!.postMessage(data, new URL(iframe.src).origin);
+          };
+          connection.on("data", handler);
+          return [key, handler] as const;
+        });
+
+    const close = function () {
+      window.removeEventListener("message", handleMessage);
+      handlers.forEach(([key, handler]) => {
+        connections.get(key).off("data", handler);
+      });
+    };
+
+    return { close };
+  };
+
+  const joinMatch = function (roomID: string) {
     peer = new Peer();
     peer.on("open", () => {
       const connection = peer.connect(`ally-play-${roomID}`);
       connection.on("open", () => {
         connections.set(roomID, connection);
         connection.on("data", handleDataFromHost);
-        connection.send({ type: "metadata", player: { playerName } });
       });
     });
   };
 
   const startGame = function () {
+    state = { ...state, runningMatch: true };
     connections.forEach((connection) => {
-      connection.send({ type: "start" });
+      connection.send({ type: "metadata", state });
     });
-    handleStart(state.game!);
+    publish();
   };
 
   const setReady = function (ready: boolean) {
-    if (!peer) return;
     connections.forEach((connection) => {
       connection.send({ type: "metadata", player: { ready } });
     });
   };
 
-  let subscriptions = new Set<(state: any) => void>();
-  function subscribe(callback: (state: any) => void) {
+  let subscriptions = new Set<
+    (state: { lobbyState: LobbyState; playerID: string }) => void
+  >();
+  function subscribe(
+    callback: (state: { lobbyState: LobbyState; playerID: string }) => void
+  ) {
     subscriptions.add(callback);
     return function () {
       subscriptions.delete(callback);
     };
   }
 
+  function publish() {
+    subscriptions.forEach((callback) =>
+      callback({ lobbyState: state, playerID })
+    );
+  }
+
   const close = function () {
     peer?.destroy();
+    state = {
+      roomID: "",
+      hostID: "",
+      game: null,
+      runningMatch: false,
+      matchData: [],
+    };
+    publish();
   };
 
-  return { createRoom, joinMatch, startGame, setReady, subscribe, close };
+  return {
+    changeGame,
+    createRoom,
+    createServer,
+    joinMatch,
+    startGame,
+    setReady,
+    subscribe,
+    close,
+  };
 }
 
 export type Lobby = ReturnType<typeof createLobby>;
 
-export function useLobby({
-  game,
-}: {
-  isHost: boolean;
-  game: { name: string; url: string; icon?: string };
-}) {
-  const [lobby, setLobby] = useState<Lobby | null>(null);
-  const [lobbyState, setLobbyState] = useState(null);
+export function useLobby() {
+  const lobby = useMemo(() => createLobby({}), []);
+
+  const [lobbyState, setLobbyState] = useState<LobbyState>({
+    roomID: "",
+    hostID: "",
+    game: null,
+    runningMatch: false,
+    matchData: [],
+  });
+  const [playerID, setPlayerID] = useState<string | null>(null);
 
   useEffect(() => {
-    const lobby = createLobby({
-      game,
-      handleStart: () => {},
+    const subscription = lobby.subscribe(({ lobbyState, playerID }) => {
+      setLobbyState(lobbyState);
+      setPlayerID(playerID);
     });
-    const subscription = lobby.subscribe(setLobbyState);
-    setLobby(lobby);
+
     return () => {
       subscription();
       lobby.close();
     };
-  }, []);
+  }, [lobby]);
 
-  return { lobby, lobbyState } as const;
+  return { lobby, lobbyState, playerID } as const;
 }
