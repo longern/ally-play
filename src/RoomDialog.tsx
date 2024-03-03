@@ -1,11 +1,19 @@
 import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, CircularProgress, Stack } from "@mui/material";
+import {
+  Avatar,
+  Button,
+  CircularProgress,
+  Container,
+  Grid,
+  Stack,
+} from "@mui/material";
 import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
 import { Settings, useRoomID } from "./StateProvider";
+import { Add as AddIcon } from "@mui/icons-material";
 
 function roomURL(roomID: string) {
   const params = new URLSearchParams({ r: roomID });
@@ -62,7 +70,8 @@ function RoomDialog({
 
   useEffect(() => {
     if (!canvasRef.current || !lobbyState.roomID) return;
-    QRCode.toCanvas(canvasRef.current, roomURL(lobbyState.roomID));
+    const url = roomURL(lobbyState.roomID);
+    QRCode.toCanvas(canvasRef.current, url, { width: 256 });
   }, [lobbyState.roomID]);
 
   return (
@@ -74,7 +83,7 @@ function RoomDialog({
     >
       {lobbyState.runningMatch ? (
         <GameContainer lobby={lobby} gameUrl={lobbyState.game.url} />
-      ) : (
+      ) : !me ? (
         <Stack
           sx={{
             flexGrow: 1,
@@ -83,34 +92,62 @@ function RoomDialog({
           }}
           spacing={2}
         >
-          {!me ? (
-            <CircularProgress />
-          ) : lobbyState.hostID === me.playerID ? (
-            <>
-              <canvas ref={canvasRef}></canvas>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  navigator.clipboard.writeText(roomURL(lobbyState.roomID));
-                }}
-              >
-                {t("Invite")}
-              </Button>
-              <Button variant="outlined" onClick={lobby.startGame}>
-                {t("Start")}
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                lobby.setReady(!me.ready);
-              }}
-            >
-              {me.ready ? t("Cancel ready") : t("Get ready")}
-            </Button>
-          )}
+          <CircularProgress />
         </Stack>
+      ) : (
+        <Container maxWidth="md" sx={{ height: "100%" }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <img
+              src={lobbyState.game.icon}
+              alt={lobbyState.game.name}
+              width="64"
+              height="64"
+            />
+            <div>{lobbyState.game.name}</div>
+          </Stack>
+          <Grid container sx={{ marginY: 4 }}>
+            {lobbyState.matchData.map((p) => (
+              <Grid key={p.playerID} item xs={4} md={2}>
+                <Stack alignItems="center" spacing={1}>
+                  <Avatar src={p.avatar} />
+                  <div>{p.playerName}</div>
+                </Stack>
+              </Grid>
+            ))}
+            <Grid item xs={4} md={2}>
+              <Stack alignItems="center" spacing={1}>
+                <Avatar>
+                  <AddIcon />
+                </Avatar>
+                <div>{t("Invite")}</div>
+              </Stack>
+            </Grid>
+          </Grid>
+          {lobbyState.hostID === me.playerID ? (
+            <Stack alignItems="center" spacing={2}>
+              <canvas ref={canvasRef} width={256} height={256}></canvas>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  onClick={() => {
+                    navigator.clipboard &&
+                      navigator.clipboard.writeText(roomURL(lobbyState.roomID));
+                  }}
+                >
+                  {t("Invite")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  onClick={lobby.startGame}
+                >
+                  {t("Start")}
+                </Button>
+              </Stack>
+            </Stack>
+          ) : null}
+        </Container>
       )}
     </HistoryDialog>
   );

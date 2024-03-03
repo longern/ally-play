@@ -95,11 +95,17 @@ export function createLobby(options?: {
               connection.send({ type: "metadata", state });
             });
           });
-          state.matchData.push({
-            playerID,
-            playerName: `Player ${state.matchData.length + 1}`,
-            ready: false,
-          });
+          state = {
+            ...state,
+            matchData: [
+              ...state.matchData,
+              {
+                playerID,
+                playerName: `Player ${state.matchData.length + 1}`,
+                ready: false,
+              },
+            ],
+          };
           publish();
         });
         resolve(id);
