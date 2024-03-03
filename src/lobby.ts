@@ -24,6 +24,7 @@ export function createLobby(options?: {
     url: string;
     icon?: string;
   };
+  config?: any;
 }) {
   options = options ?? {};
   let peer: Peer | null = null;
@@ -121,7 +122,7 @@ export function createLobby(options?: {
   const createRoom = async function () {
     return new Promise<string>((resolve) => {
       const id = Math.random().toFixed(6).slice(2);
-      peer = new Peer(`ally-play-${id}`);
+      peer = new Peer(`ally-play-${id}`, { config: options.config });
       peer.on("open", () => {
         peer.on("connection", handleConnectionFromGuest);
         resolve(id);
@@ -199,7 +200,7 @@ export function createLobby(options?: {
   };
 
   const joinMatch = function (roomID: string) {
-    peer = new Peer();
+    peer = new Peer({ config: options.config });
     peer.on("open", () => {
       const connection = peer.connect(`ally-play-${roomID}`);
       connection.on("open", () => {
@@ -270,8 +271,8 @@ export function createLobby(options?: {
 
 export type Lobby = ReturnType<typeof createLobby>;
 
-export function useLobby() {
-  const lobby = useMemo(() => createLobby({}), []);
+export function useLobby({ config }: { config?: any }) {
+  const lobby = useMemo(() => createLobby({ config }), [config]);
 
   const [lobbyState, setLobbyState] = useState<LobbyState>({
     roomID: "",

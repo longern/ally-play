@@ -1,3 +1,6 @@
+import React, { Suspense, useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { ErrorBoundary } from "react-error-boundary";
 import {
   Avatar,
   Box,
@@ -7,7 +10,6 @@ import {
   CardContent,
   Container,
   CssBaseline,
-  Divider,
   GlobalStyles,
   Grid,
   IconButton,
@@ -22,25 +24,24 @@ import {
   Typography,
   createTheme,
 } from "@mui/material";
-import React, { Suspense, useCallback, useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  Add as AddIcon,
+  InstallMobile as InstallMobileIcon,
+  Launch as LaunchIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  Settings as SettingsIcon,
+} from "@mui/icons-material";
+
 import {
   useSetIsHost,
   useSetRoomID,
   useSetSettings,
   useSettings,
 } from "./StateProvider";
-import { ErrorBoundary } from "react-error-boundary";
-
 import { Settings } from "./StateProvider";
-import {
-  Add as AddIcon,
-  InstallMobile as InstallMobileIcon,
-  Launch as LaunchIcon,
-  QrCodeScanner as QrCodeScannerIcon,
-} from "@mui/icons-material";
 
 const RoomDialog = React.lazy(() => import("./RoomDialog"));
+const SettingsDialog = React.lazy(() => import("./SettingsDialog"));
 
 const globalStyles = (
   <GlobalStyles
@@ -90,7 +91,7 @@ function useHandleInstall() {
   }, [setSettings, t]);
 }
 
-function Header() {
+function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
   const settings = useSettings();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
@@ -111,6 +112,7 @@ function Header() {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
+        MenuListProps={{ disablePadding: true }}
       >
         <MenuItem onClick={() => setAnchorEl(null)}>
           <ListItemIcon>
@@ -118,7 +120,6 @@ function Header() {
           </ListItemIcon>
           <ListItemText primary={t("Scan")} />
         </MenuItem>
-        <Divider component={"li"} variant="inset" />
         <MenuItem
           onClick={() => {
             handleInstall();
@@ -129,6 +130,17 @@ function Header() {
             <InstallMobileIcon />
           </ListItemIcon>
           <ListItemText primary={t("Install")} />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            onSettingsClick();
+          }}
+        >
+          <ListItemIcon>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText primary={t("Settings")} />
         </MenuItem>
       </Menu>
     </Toolbar>
@@ -291,6 +303,7 @@ function Fallback({ error }) {
 
 function App() {
   const [roomDialogOpen, setRoomDialogOpen] = React.useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
   const gameRef = React.useRef<Settings["installedGames"][number] | undefined>(
     undefined
   );
@@ -348,7 +361,7 @@ function App() {
         <CssBaseline />
         {globalStyles}
         <Stack sx={{ height: "100%" }}>
-          <Header />
+          <Header onSettingsClick={() => setSettingsDialogOpen(true)} />
           <Main onCreateRoom={handleCreateRoom} onSearch={handleSearch} />
         </Stack>
         <Suspense>
@@ -359,6 +372,12 @@ function App() {
               gameRef.current = undefined;
               setRoomDialogOpen(false);
             }}
+          />
+        </Suspense>
+        <Suspense>
+          <SettingsDialog
+            open={settingsDialogOpen}
+            onClose={() => setSettingsDialogOpen(false)}
           />
         </Suspense>
       </ThemeProvider>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Avatar,
@@ -12,7 +12,7 @@ import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
-import { Settings, useRoomID } from "./StateProvider";
+import { Settings, useRoomID, useSettings } from "./StateProvider";
 import { Add as AddIcon } from "@mui/icons-material";
 
 function roomURL(roomID: string) {
@@ -49,7 +49,13 @@ function RoomDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const { lobby, lobbyState, playerID } = useLobby();
+  const settings = useSettings();
+  const config = useMemo(
+    () =>
+      settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
+    [settings]
+  );
+  const { lobby, lobbyState, playerID } = useLobby({ config });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const roomID = useRoomID();

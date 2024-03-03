@@ -15,6 +15,13 @@ export type Settings = {
     url: string;
     icon?: string;
   }[];
+  turnServer:
+    | {
+        urls: string;
+        username: string;
+        credential: string;
+      }
+    | undefined;
 };
 
 function useSettingsState() {
