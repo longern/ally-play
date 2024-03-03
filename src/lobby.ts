@@ -66,6 +66,46 @@ export function createLobby(options?: {
     }
   }
 
+  function handleConnectionFromGuest(connection: DataConnection) {
+    const playerID = connection.connectionId;
+    connection.on("open", () => {
+      connections.set(playerID, connection);
+      connection.on("data", (data: any) => {
+        handleDataFromGuest(playerID, data);
+      });
+      connection.send({ type: "join", player: playerID });
+      state = {
+        ...state,
+        matchData: [
+          ...state.matchData,
+          {
+            playerID,
+            playerName: `Player ${state.matchData.length + 1}`,
+            ready: false,
+          },
+        ],
+      };
+      publish();
+      connections.forEach((connection) => {
+        connection.send({ type: "metadata", state });
+      });
+    });
+    connection.on("close", () => {
+      if (state.runningMatch) return;
+      connections.delete(playerID);
+      state = {
+        ...state,
+        matchData: state.matchData.filter(
+          (player) => player.playerID !== playerID
+        ),
+      };
+      publish();
+      connections.forEach((connection) => {
+        connection.send({ type: "metadata", state });
+      });
+    });
+  }
+
   const changeGame = function (game: {
     name: string;
     url: string;
@@ -83,31 +123,7 @@ export function createLobby(options?: {
       const id = Math.random().toFixed(6).slice(2);
       peer = new Peer(`ally-play-${id}`);
       peer.on("open", () => {
-        peer.on("connection", (connection) => {
-          const playerID = connection.connectionId;
-          connections.set(playerID, connection);
-          connection.on("data", (data: any) => {
-            handleDataFromGuest(playerID, data);
-          });
-          connection.on("open", () => {
-            connection.send({ type: "join", player: playerID });
-            connections.forEach((connection) => {
-              connection.send({ type: "metadata", state });
-            });
-          });
-          state = {
-            ...state,
-            matchData: [
-              ...state.matchData,
-              {
-                playerID,
-                playerName: `Player ${state.matchData.length + 1}`,
-                ready: false,
-              },
-            ],
-          };
-          publish();
-        });
+        peer.on("connection", handleConnectionFromGuest);
         resolve(id);
         state = {
           game: state.game,
@@ -189,6 +205,9 @@ export function createLobby(options?: {
       connection.on("open", () => {
         connections.set(roomID, connection);
         connection.on("data", handleDataFromHost);
+      });
+      connection.on("error", (error) => {
+        throw error;
       });
     });
   };
