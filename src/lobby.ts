@@ -74,7 +74,7 @@ export function createLobby(options?: {
   }
 
   function handleConnectionFromGuest(connection: DataConnection) {
-    const playerID = connection.connectionId;
+    const playerID = connection.peer;
     connection.on("open", () => {
       connections.set(playerID, connection);
       connection.on("data", (data: any) => {
@@ -97,7 +97,8 @@ export function createLobby(options?: {
         connection.send({ type: "metadata", state });
       });
     });
-    connection.on("close", () => {
+    connection.on("iceStateChanged", (iceState) => {
+      if (iceState !== "disconnected") return;
       if (state.runningMatch) return;
       connections.delete(playerID);
       state = {
