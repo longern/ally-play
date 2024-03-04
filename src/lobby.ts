@@ -27,6 +27,12 @@ export function createLobby(options?: {
   config?: any;
 }) {
   options = options ?? {};
+  const config = options.config ?? {
+    iceServers: [
+      { urls: "STUN:freestun.net:3479" },
+      { urls: "TURN:freeturn.net:3478", username: "free", credential: "free" },
+    ],
+  };
   let peer: Peer | null = null;
   const connections = new Map<string, DataConnection>();
 
@@ -122,7 +128,7 @@ export function createLobby(options?: {
   const createRoom = async function () {
     return new Promise<string>((resolve) => {
       const id = Math.random().toFixed(6).slice(2);
-      peer = new Peer(`ally-play-${id}`, { config: options.config });
+      peer = new Peer(`ally-play-${id}`, { config });
       peer.on("open", () => {
         peer.on("connection", handleConnectionFromGuest);
         resolve(id);
@@ -200,7 +206,7 @@ export function createLobby(options?: {
   };
 
   const joinMatch = function (roomID: string) {
-    peer = new Peer({ config: options.config });
+    peer = new Peer({ config });
     peer.on("open", () => {
       const connection = peer.connect(`ally-play-${roomID}`);
       connection.on("open", () => {
