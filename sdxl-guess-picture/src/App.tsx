@@ -19,6 +19,19 @@ import { GuessPicture } from "./game";
 import { ParentSocket } from "./ParentSocket";
 import { Client, GameBoardComponent } from "./Client";
 
+const COLORS = [
+  "#f44336",
+  "#8bc34a",
+  "#03a9f4",
+  "#ffeb3b",
+  "#ff9800",
+  "#be44d3",
+  "#f39fae",
+  "#966959",
+  "#50c8d7",
+  "#9b9a9a",
+];
+
 function ImageGrid({
   pictures,
   selected,
@@ -44,10 +57,12 @@ function ImageGrid({
                 transition: "opacity 0.2s, transform 0.2s",
               }}
             >
-              <CardMedia sx={{ display: "flex" }}>
+              <CardMedia sx={{ display: "flex", aspectRatio: 1 }}>
                 <img
                   src={picture}
                   alt=""
+                  width="512"
+                  height="512"
                   onClick={() =>
                     onSelectedChange?.(selected !== i ? i : undefined)
                   }
@@ -127,7 +142,12 @@ function Pick({ G, moves, playerID }: GuessPictureBoardProps) {
           </Stack>
         </Stack>
       ) : (
-        <ImageGrid pictures={G.players[playerID].hand} />
+        <Stack spacing={2}>
+          <ImageGrid pictures={G.players[playerID].hand} />
+          <Stack alignItems="center" sx={{ padding: 2 }}>
+            Waiting
+          </Stack>
+        </Stack>
       )}
     </Container>
   );
@@ -144,7 +164,19 @@ function Confuse({ G, moves, playerID }: GuessPictureBoardProps) {
           alt=""
         />
         <Stack alignItems="center" sx={{ padding: 2 }}>
-          {G.description || " "}
+          {G.description}
+        </Stack>
+      </Stack>
+    </Container>
+  ) : G.board.some((p) => p.playerID === playerID) ? (
+    <Container maxWidth="md" sx={{ paddingY: 2 }}>
+      <Stack alignItems="center">
+        <img
+          src={G.board.find((p) => p.playerID === playerID).picture}
+          alt=""
+        />
+        <Stack alignItems="center" sx={{ padding: 2 }}>
+          {G.description}
         </Stack>
       </Stack>
     </Container>
@@ -156,7 +188,7 @@ function Confuse({ G, moves, playerID }: GuessPictureBoardProps) {
         onSelectedChange={setSelected}
       />
       <Stack alignItems="center" sx={{ padding: 2 }}>
-        {G.description || " "}
+        {G.description}
       </Stack>
       <Stack alignItems="center">
         <Button
@@ -179,6 +211,9 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
   return playerID === G.currentPlayer ? (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
       <ImageGrid pictures={G.board.map((p) => p.picture)} />
+      <Stack alignItems="center" sx={{ padding: 2 }}>
+        Waiting
+      </Stack>
     </Container>
   ) : (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
@@ -188,7 +223,7 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
         onSelectedChange={setSelected}
       />
       <Stack alignItems="center" sx={{ padding: 2 }}>
-        {G.description || " "}
+        {G.description}
       </Stack>
       <Stack alignItems="center">
         <Button
@@ -216,7 +251,7 @@ function Reveal({ G, moves, playerID }: GuessPictureBoardProps) {
         selected={G.board.findIndex((p) => p.playerID === G.currentPlayer)}
       />
       <Stack alignItems="center" sx={{ padding: 2 }}>
-        {G.description || " "}
+        {G.description}
       </Stack>
       {playerID === G.currentPlayer && (
         <Stack alignItems="center">
@@ -241,16 +276,19 @@ const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
 }) {
   return (
     <Stack direction="row" height="100%">
-      <Box sx={{ width: 60, flexShrink: 0 }}>
-        {Object.entries(G.players).map(([id, player]) => (
+      <Box sx={{ width: 40, flexShrink: 0 }}>
+        {Object.entries(G.players).map(([id, player], index) => (
           <Box
             key={id}
             sx={{
               padding: 1,
-              backgroundColor: id === G.currentPlayer ? "lightgreen" : "white",
+              width: id === G.currentPlayer ? "125%" : "100%",
+              fontWeight: id === playerID ? "bold" : "normal",
+              backgroundColor: COLORS[index],
+              transition: "width 0.2s",
             }}
           >
-            {id}: {player.score}
+            {player.score}
           </Box>
         ))}
       </Box>
