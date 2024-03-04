@@ -18,7 +18,68 @@ import {
   Check as CheckIcon,
   NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
-import { useSetSettings, useSettings } from "./StateProvider";
+import { Settings, useSetSettings, useSettings } from "./StateProvider";
+
+function TurnServerForm({
+  value,
+  setValue,
+}: {
+  value?: Settings["turnServer"];
+  setValue: React.Dispatch<React.SetStateAction<Settings["turnServer"]>>;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <List disablePadding sx={{ width: "100%" }}>
+      <ListItem>
+        <TextField
+          variant="filled"
+          size="small"
+          label={t("Url")}
+          fullWidth
+          value={value?.urls ?? ""}
+          onChange={(e) =>
+            setValue((server) => ({
+              ...server,
+              urls: e.target.value,
+            }))
+          }
+        />
+      </ListItem>
+      <ListItem>
+        <TextField
+          variant="filled"
+          size="small"
+          label={t("Username")}
+          fullWidth
+          value={value?.username ?? ""}
+          onChange={(e) =>
+            setValue((server) => ({
+              ...server,
+              username: e.target.value,
+            }))
+          }
+        />
+      </ListItem>
+      <ListItem>
+        <TextField
+          type="password"
+          variant="filled"
+          size="small"
+          label={t("Credential")}
+          fullWidth
+          value={value?.credential ?? ""}
+          onChange={(e) =>
+            setValue((server) => ({
+              ...server,
+              credential: e.target.value,
+            }))
+          }
+        />
+      </ListItem>
+    </List>
+  );
+}
 
 function NetworkDialog({
   open,
@@ -63,57 +124,8 @@ function NetworkDialog({
                 }
               />
             </ListItem>
-            <Collapse in={server !== undefined}>
-              <ListItem disablePadding>
-                <List disablePadding sx={{ width: "100%" }}>
-                  <ListItem>
-                    <TextField
-                      variant="filled"
-                      size="small"
-                      label={t("Url")}
-                      fullWidth
-                      value={server?.urls ?? ""}
-                      onChange={(e) =>
-                        setServer((server) => ({
-                          ...server,
-                          urls: e.target.value,
-                        }))
-                      }
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <TextField
-                      variant="filled"
-                      size="small"
-                      label={t("Username")}
-                      fullWidth
-                      value={server?.username ?? ""}
-                      onChange={(e) =>
-                        setServer((server) => ({
-                          ...server,
-                          username: e.target.value,
-                        }))
-                      }
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <TextField
-                      type="password"
-                      variant="filled"
-                      size="small"
-                      label={t("Credential")}
-                      fullWidth
-                      value={server?.credential ?? ""}
-                      onChange={(e) =>
-                        setServer((server) => ({
-                          ...server,
-                          credential: e.target.value,
-                        }))
-                      }
-                    />
-                  </ListItem>
-                </List>
-              </ListItem>
+            <Collapse in={server !== undefined} unmountOnExit>
+              <TurnServerForm value={server} setValue={setServer} />
             </Collapse>
           </List>
         </Card>
