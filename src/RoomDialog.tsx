@@ -2,18 +2,21 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Avatar,
+  Box,
   Button,
   CircularProgress,
   Container,
   Grid,
+  IconButton,
   Stack,
+  Tooltip,
 } from "@mui/material";
 import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
 import { Settings, useRoomID, useSettings } from "./StateProvider";
-import { Add as AddIcon } from "@mui/icons-material";
+import { Add as AddIcon, Help as HelpIcon } from "@mui/icons-material";
 
 function roomURL(roomID: string) {
   const params = new URLSearchParams({ r: roomID });
@@ -40,6 +43,25 @@ function GameContainer({ lobby, gameUrl }: { lobby: Lobby; gameUrl: string }) {
   );
 }
 
+function useHelpText({ open, url }: { open: boolean; url: string }) {
+  const [helpText, setHelpText] = React.useState<string | null>(null);
+  const prevUrl = useRef(url);
+
+  useEffect(() => {
+    if (!open || prevUrl.current === url) return;
+    setHelpText(null);
+    fetch(`${new URL(url)}manifest.json`).then(async (res) => {
+      if (res.ok) {
+        const manifest = await res.json();
+        prevUrl.current = url;
+        setHelpText(manifest.help || "");
+      }
+    });
+  }, [url, open]);
+
+  return helpText;
+}
+
 function RoomDialog({
   gameRef,
   open,
@@ -56,6 +78,8 @@ function RoomDialog({
     [settings]
   );
   const { lobby, lobbyState, playerID } = useLobby({ config });
+  const [showHelp, setShowHelp] = React.useState(false);
+  const helpText = useHelpText({ open: showHelp, url: lobbyState.game?.url });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const roomID = useRoomID();
@@ -102,14 +126,44 @@ function RoomDialog({
         </Stack>
       ) : (
         <Container maxWidth="md" sx={{ height: "100%" }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
+            sx={{ "& > *": { flexShrink: 0 } }}
+          >
             <img
               src={lobbyState.game.icon}
               alt={lobbyState.game.name}
               width="64"
               height="64"
+              style={{ borderRadius: "8px" }}
             />
-            <div>{lobbyState.game.name}</div>
+            <Box
+              sx={{
+                flexGrow: 1,
+                flexShrink: 1,
+                textWrap: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {lobbyState.game.name}
+            </Box>
+            <Tooltip
+              describeChild
+              title={
+                helpText === null
+                  ? t("Loading...")
+                  : helpText || t("No help available")
+              }
+              onOpen={() => setShowHelp(true)}
+              onClose={() => setShowHelp(false)}
+            >
+              <IconButton aria-label={t("Help")}>
+                <HelpIcon />
+              </IconButton>
+            </Tooltip>
           </Stack>
           <Grid container sx={{ marginY: 4 }}>
             {lobbyState.matchData.map((p) => (
