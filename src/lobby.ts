@@ -98,7 +98,10 @@ export function createLobby(options?: {
       });
     });
     connection.on("iceStateChanged", (iceState) => {
-      if (iceState !== "disconnected") return;
+      if (!["failed", "disconnected", "closed"].includes(iceState)) return;
+      connection.close();
+    });
+    connection.on("close", () => {
       if (state.runningMatch) return;
       connections.delete(playerID);
       state = {

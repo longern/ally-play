@@ -1,4 +1,11 @@
-import React, { Suspense, useCallback, useEffect, useMemo } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "react-error-boundary";
 import {
@@ -10,6 +17,7 @@ import {
   CardContent,
   Container,
   CssBaseline,
+  Dialog,
   GlobalStyles,
   Grid,
   IconButton,
@@ -26,6 +34,7 @@ import {
 } from "@mui/material";
 import {
   Add as AddIcon,
+  Close as CloseIcon,
   InstallMobile as InstallMobileIcon,
   Launch as LaunchIcon,
   QrCodeScanner as QrCodeScannerIcon,
@@ -39,6 +48,7 @@ import {
   useSettings,
 } from "./StateProvider";
 import { Settings } from "./StateProvider";
+import { HistoryModal } from "./HistoryDialog";
 
 const RoomDialog = React.lazy(() => import("./RoomDialog"));
 const SettingsDialog = React.lazy(() => import("./SettingsDialog"));
@@ -91,12 +101,136 @@ function useHandleInstall() {
   }, [setSettings, t]);
 }
 
+function VideoStream({
+  onStream,
+}: {
+  onStream: (videoRef: React.RefObject<HTMLVideoElement>) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const onStreamRef = useRef(onStream);
+
+  useEffect(() => {
+    onStreamRef.current = onStream;
+  }, [onStream]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    let mediaStream: MediaStream;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" } })
+      .then((stream) => {
+        video.srcObject = stream;
+        mediaStream = stream;
+      });
+    function handleCanPlay() {
+      onStreamRef.current(videoRef);
+    }
+    video.addEventListener("canplay", handleCanPlay);
+    return () => {
+      video.removeEventListener("canplay", handleCanPlay);
+      mediaStream && mediaStream.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: "black",
+        objectFit: "cover",
+      }}
+    />
+  );
+}
+
+function ScanDialog({
+  resolve,
+  open,
+  onClose,
+}: {
+  resolve: (result: string) => void;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleStream = useCallback(
+    (video: React.RefObject<HTMLVideoElement>) => {
+      const detector = new (window as any).BarcodeDetector({
+        formats: ["qr_code"],
+      });
+      const stream = video.current.srcObject as MediaStream;
+      const interval = setInterval(async () => {
+        if (!video.current || !stream.active) return clearInterval(interval);
+        const barcodes = await detector.detect(video.current);
+        if (barcodes.length === 0) return;
+        resolve(barcodes[0].rawValue);
+        onClose();
+      }, 1000);
+    },
+    [resolve, onClose]
+  );
+
+  return (
+    <HistoryModal hash="scan" open={open} onClose={onClose}>
+      {(onClose) => (
+        <Dialog open={open} onClose={onClose} fullScreen>
+          <IconButton
+            sx={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              zIndex: 1,
+              color: "white",
+            }}
+            onClick={() => {
+              onClose();
+              const video = videoRef.current;
+              if (!video) return;
+              video.srcObject = null;
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <VideoStream onStream={handleStream} />
+        </Dialog>
+      )}
+    </HistoryModal>
+  );
+}
+
 function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
   const settings = useSettings();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [scanDialogOpen, setScanDialogOpen] = useState(false);
 
   const handleInstall = useHandleInstall();
   const { t } = useTranslation();
+
+  const handleScanResult = useCallback((result: string) => {
+    try {
+      const url = new URL(result);
+      if (
+        url.origin === window.location.origin &&
+        url.pathname === window.location.pathname &&
+        url.searchParams.has("r") &&
+        url.searchParams.get("r")?.match(/^[0-9]{6}$/)
+      ) {
+        window.location.href = result;
+      }
+    } catch (e) {
+      window.alert(result);
+    }
+  }, []);
+
+  const handleScanDialogClose = useCallback(() => {
+    setScanDialogOpen(false);
+  }, []);
 
   return (
     <Toolbar disableGutters sx={{ minHeight: 64, flexShrink: 0 }}>
@@ -114,7 +248,12 @@ function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
         onClose={() => setAnchorEl(null)}
         MenuListProps={{ disablePadding: true }}
       >
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem
+          onClick={() => {
+            setScanDialogOpen(true);
+            setAnchorEl(null);
+          }}
+        >
           <ListItemIcon>
             <QrCodeScannerIcon />
           </ListItemIcon>
@@ -143,6 +282,11 @@ function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
           <ListItemText primary={t("Settings")} />
         </MenuItem>
       </Menu>
+      <ScanDialog
+        resolve={handleScanResult}
+        open={scanDialogOpen}
+        onClose={handleScanDialogClose}
+      />
     </Toolbar>
   );
 }
@@ -250,7 +394,7 @@ function Main({
   onCreateRoom: (initialGame: Settings["installedGames"][number]) => void;
   onSearch: (search: string) => void;
 }) {
-  const [search, setSearch] = React.useState("");
+  const [search, setSearch] = useState("");
 
   const { t } = useTranslation();
 
@@ -302,9 +446,9 @@ function Fallback({ error }) {
 }
 
 function App() {
-  const [roomDialogOpen, setRoomDialogOpen] = React.useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = React.useState(false);
-  const gameRef = React.useRef<Settings["installedGames"][number] | undefined>(
+  const [roomDialogOpen, setRoomDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const gameRef = useRef<Settings["installedGames"][number] | undefined>(
     undefined
   );
   const setRoomID = useSetRoomID();
