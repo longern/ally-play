@@ -343,7 +343,7 @@ function GameGrid({
   ) : (
     <Grid container spacing={2}>
       {installedGames.map((game) => (
-        <Grid item key={game.name} xs={6} md={3} lg={2}>
+        <Grid item key={game.url} xs={6} md={3} lg={2}>
           <Card elevation={0}>
             <CardActionArea
               onClick={() => onCreateRoom(game)}
