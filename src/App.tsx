@@ -246,6 +246,7 @@ function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
+        sx={{ "& .MuiMenuItem-root": { minHeight: 48, minWidth: 160 } }}
         MenuListProps={{ disablePadding: true }}
       >
         <MenuItem
