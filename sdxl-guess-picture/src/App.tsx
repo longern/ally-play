@@ -76,9 +76,9 @@ function ImageGrid({
   );
 }
 
-type GuessPictureBoardProps = Parameters<
-  GameBoardComponent<typeof GuessPicture>
->[0];
+type GuessPictureBoardProps = Partial<
+  Parameters<GameBoardComponent<typeof GuessPicture>>[0]
+>;
 
 function Upload({ G, moves, playerID }: GuessPictureBoardProps) {
   useEffect(() => {

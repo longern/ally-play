@@ -1,4 +1,11 @@
-import { ReactNode, createElement, useEffect, useMemo, useState } from "react";
+import {
+  ReactNode,
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { produce } from "immer";
 
 type Ctx = {
@@ -12,6 +19,7 @@ type GameMoveFunction<GameState> = (
     G: GameState;
     ctx: Ctx;
     playerID: string;
+    sendChatMessage: (data: any) => void;
   },
   ...args: any[]
 ) => void;
@@ -35,7 +43,17 @@ export type GameClientMoves<Moves> = {
 };
 
 export type GameBoardComponent<T> = T extends Game<infer G, infer M>
-  ? (props: { G: G; moves: GameClientMoves<M>; playerID: string }) => ReactNode
+  ? (props: {
+      G: G;
+      moves: GameClientMoves<M>;
+      playerID: string;
+      chatMessages: {
+        id: string;
+        sender: string;
+        payload: any;
+      }[];
+      sendChatMessage: (data: any) => void;
+    }) => ReactNode
   : never;
 
 export function makeGame<
@@ -58,6 +76,12 @@ interface Socket {
   close: () => void;
 }
 
+function randomID() {
+  return Array.from(crypto.getRandomValues(new Uint32Array(4)))
+    .map((n) => n.toString(36))
+    .join("");
+}
+
 export function Client<T extends Game<any, any>>({
   game,
   board,
@@ -71,6 +95,29 @@ export function Client<T extends Game<any, any>>({
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [playerID, setPlayerID] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<
+    {
+      id: string;
+      sender: string;
+      payload: any;
+    }[]
+  >([]);
+
+  const sendChatMessage = useCallback(
+    (message: any) => {
+      if (ctx!.isHost)
+        setChatMessages((messages) => [
+          ...messages,
+          {
+            id: randomID(),
+            sender: playerID,
+            payload: message,
+          },
+        ]);
+      else socket.send(JSON.stringify({ type: "chat", message }));
+    },
+    [ctx, playerID, socket]
+  );
 
   useEffect(() => {
     socket.send(JSON.stringify({ type: "setup" }));
@@ -89,21 +136,38 @@ export function Client<T extends Game<any, any>>({
         }
       } else if (message.type === "sync") {
         setGameState(message.state);
+        setChatMessages((chatMessages) => {
+          const ids = new Set(chatMessages.map((m) => m.id));
+          const newMessages = message.chatMessages.filter(
+            (m: { id: string }) => !ids.has(m.id)
+          );
+          return [...chatMessages, ...newMessages];
+        });
       } else if (message.type === "action") {
         const { playerID } = message;
         const [func, ...args] = message.args;
         setGameState(
           produce<GameState>((G) => {
-            game.moves[func]({ G, ctx, playerID }, ...args);
+            game.moves[func]({ G, ctx, playerID, sendChatMessage }, ...args);
           })
         );
+      } else if (message.type === "chat") {
+        const { playerID } = message;
+        setChatMessages((messages) => [
+          ...messages,
+          {
+            id: randomID(),
+            sender: playerID,
+            payload: message.message,
+          },
+        ]);
       }
     };
     socket.addEventListener("message", handleMessage);
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [ctx, game, socket]);
+  }, [ctx, game, sendChatMessage, socket]);
 
   const moves = useMemo(
     () =>
@@ -115,7 +179,10 @@ export function Client<T extends Game<any, any>>({
               if (ctx.isHost)
                 setGameState(
                   produce<GameState>((G) => {
-                    game.moves[prop]({ G, ctx, playerID }, ...args);
+                    game.moves[prop](
+                      { G, ctx, playerID, sendChatMessage },
+                      ...args
+                    );
                   })
                 );
               else
@@ -129,7 +196,7 @@ export function Client<T extends Game<any, any>>({
           },
         }
       ) as GameClientMoves<typeof game>,
-    [game, ctx, playerID, socket]
+    [game, ctx, playerID, sendChatMessage, socket]
   );
 
   useEffect(() => {
@@ -141,12 +208,21 @@ export function Client<T extends Game<any, any>>({
           type: "sync",
           playerID: player,
           state: gameState,
+          chatMessages,
         })
       );
     });
-  }, [ctx, gameState, playerID, socket]);
+  }, [chatMessages, ctx, gameState, playerID, socket]);
 
   return (
-    gameState && ctx && createElement(board, { G: gameState, moves, playerID })
+    gameState &&
+    ctx &&
+    createElement(board, {
+      G: gameState,
+      moves,
+      playerID,
+      chatMessages,
+      sendChatMessage,
+    })
   );
 }
