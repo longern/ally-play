@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Container,
   CssBaseline,
+  GlobalStyles,
   Grid,
   Stack,
   TextField,
@@ -14,7 +15,6 @@ import {
   createTheme,
 } from "@mui/material";
 
-import "./App.css";
 import { GuessPicture } from "./game";
 import { ParentSocket } from "./ParentSocket";
 import { Client, GameBoardComponent } from "./Client";
@@ -102,6 +102,9 @@ function Upload({ G, moves, playerID }: GuessPictureBoardProps) {
       }}
     >
       <CircularProgress />
+      <Stack alignItems="center" sx={{ padding: 2 }}>
+        Drawing pictures...
+      </Stack>
     </Stack>
   );
 }
@@ -312,10 +315,10 @@ const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
 };
 
 function useSocket() {
-  const [socket, setSocket] = useState<WebSocket>(null);
+  const [socket, setSocket] = useState<ParentSocket | null>(null);
 
   useEffect(() => {
-    const socket = new ParentSocket() as unknown as WebSocket;
+    const socket = new ParentSocket();
     setSocket(socket);
     return () => {
       socket.close();
@@ -324,6 +327,21 @@ function useSocket() {
 
   return socket;
 }
+
+const globalStyles = (
+  <GlobalStyles
+    styles={{
+      "html, body, #root": {
+        height: "100%",
+      },
+
+      img: {
+        maxWidth: "100%",
+        maxHeight: "100%",
+      },
+    }}
+  />
+);
 
 function GameApp() {
   const socket = useSocket();
@@ -341,6 +359,7 @@ function GameApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      {globalStyles}
       {socket && (
         <Client game={GuessPicture} board={GameBoard} socket={socket} />
       )}

@@ -6,11 +6,10 @@ export class ParentSocket extends EventTarget {
     this.#handler = (event: MessageEvent<string>) => {
       if (event.source !== window.parent) return;
       if (typeof event.data !== "string") return;
-      const message = event.data;
-      this.dispatchEvent(new MessageEvent("message", { data: message }));
+      const { data } = event;
+      this.dispatchEvent(new MessageEvent("message", { data }));
     };
     window.addEventListener("message", this.#handler);
-    window.parent.postMessage(JSON.stringify({ type: "setup" }), "*");
   }
 
   send(data: string) {

@@ -1,4 +1,5 @@
 import { ReactNode, createElement, useEffect, useMemo, useState } from "react";
+import { produce } from "immer";
 
 type Ctx = {
   numPlayers: number;
@@ -44,6 +45,19 @@ export function makeGame<
   return game;
 }
 
+interface Socket {
+  addEventListener: (
+    type: "message",
+    callback: (event: MessageEvent<string>) => void
+  ) => void;
+  removeEventListener: (
+    type: "message",
+    callback: (event: MessageEvent<string>) => void
+  ) => void;
+  send: (data: any) => void;
+  close: () => void;
+}
+
 export function Client<T extends Game<any, any>>({
   game,
   board,
@@ -51,12 +65,16 @@ export function Client<T extends Game<any, any>>({
 }: {
   game: T;
   board: GameBoardComponent<T>;
-  socket: WebSocket;
+  socket: Socket;
 }): ReactNode {
   type GameState = ReturnType<T["setup"]>;
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [ctx, setCtx] = useState<Ctx | null>(null);
   const [playerID, setPlayerID] = useState<string | null>(null);
+
+  useEffect(() => {
+    socket.send(JSON.stringify({ type: "setup" }));
+  }, [socket]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent<string>) => {
@@ -74,16 +92,18 @@ export function Client<T extends Game<any, any>>({
       } else if (message.type === "action") {
         const { playerID } = message;
         const [func, ...args] = message.args;
-        const newState = JSON.parse(JSON.stringify(gameState));
-        game.moves[func]({ G: newState, ctx, playerID }, ...args);
-        setGameState(newState);
+        setGameState(
+          produce<GameState>((G) => {
+            game.moves[func]({ G, ctx, playerID }, ...args);
+          })
+        );
       }
     };
     socket.addEventListener("message", handleMessage);
     return () => {
       socket.removeEventListener("message", handleMessage);
     };
-  }, [ctx, game, gameState, socket]);
+  }, [ctx, game, socket]);
 
   const moves = useMemo(
     () =>
@@ -93,11 +113,11 @@ export function Client<T extends Game<any, any>>({
           get: (_, prop: string) => {
             return (...args: any[]) => {
               if (ctx.isHost)
-                setGameState((value) => {
-                  const G = JSON.parse(JSON.stringify(value));
-                  game.moves[prop]({ G, ctx, playerID }, ...args);
-                  return G;
-                });
+                setGameState(
+                  produce<GameState>((G) => {
+                    game.moves[prop]({ G, ctx, playerID }, ...args);
+                  })
+                );
               else
                 socket.send(
                   JSON.stringify({
