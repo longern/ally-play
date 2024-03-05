@@ -1,13 +1,21 @@
-import { makeGame } from "./Client";
+import { STRIP_SECRET, makeGame } from "./Client";
 
 export type GameState = {
   stage: "upload" | "pick" | "confuse" | "guess" | "reveal";
   description: string;
   players: Record<
     string,
-    { score: number; hand: string[]; guess: number | undefined }
+    {
+      score: number;
+      hand: string[];
+      submission: string | undefined;
+      boardIndex: number | undefined;
+      guess: number | undefined;
+    }
   >;
-  board: { playerID: string; picture: string }[];
+  scores: Record<string, number>;
+  board: string[];
+  mapping: Record<string, number>;
   currentPlayer: string;
 };
 
@@ -19,10 +27,17 @@ export const GuessPicture = makeGame({
       players: Object.fromEntries(
         ctx.playOrder.map((player) => [
           player,
-          { score: 0, hand: [], guess: undefined },
+          {
+            hand: [],
+            guess: undefined,
+            submission: undefined,
+            boardIndex: undefined,
+          },
         ])
       ),
+      scores: Object.fromEntries(ctx.playOrder.map((player) => [player, 0])),
       board: [],
+      mapping: {},
       currentPlayer: ctx.playOrder[0],
     } as GameState;
   },
@@ -41,22 +56,31 @@ export const GuessPicture = makeGame({
     pickPicture({ G, playerID }, picture: string, description: string) {
       if (G.stage !== "pick") return;
       G.description = description;
-      G.board.push({ playerID, picture });
       const handIndex = G.players[playerID].hand.indexOf(picture);
       G.players[playerID].hand.splice(handIndex, 1);
+      G.players[playerID].submission = picture;
       G.stage = "confuse";
     },
 
     pickConfusingPicture({ G, playerID }, picture: string) {
       if (G.stage !== "confuse") return;
-      if (Object.values(G.board).some((p) => p.playerID === playerID)) return;
-      const boardLength = G.board.length;
-      const insertIndex = Math.floor(Math.random() * (boardLength + 1));
-      G.board.splice(insertIndex, 0, { playerID, picture });
+      if (G.players[playerID].submission) return;
       const handIndex = G.players[playerID].hand.indexOf(picture);
       G.players[playerID].hand.splice(handIndex, 1);
-      if (boardLength + 1 === Object.keys(G.players).length) {
+      G.players[playerID].submission = picture;
+      if (Object.values(G.players).every((p) => p.submission !== undefined)) {
         G.stage = "guess";
+        const playerIDs = Object.keys(G.players);
+        const shuffledIndexes: number[] = [];
+        for (let i = 0; i < playerIDs.length; i++) {
+          const j = Math.floor(Math.random() * (i + 1));
+          shuffledIndexes.splice(j, 0, i);
+        }
+        G.board = shuffledIndexes.map((shuffledIndex, i) => {
+          const player = G.players[playerIDs[shuffledIndex]];
+          player.boardIndex = i;
+          return player.submission!;
+        });
       }
     },
 
@@ -75,28 +99,34 @@ export const GuessPicture = makeGame({
       // Everyone has made a guess
       G.stage = "reveal";
 
-      const answer = G.board.findIndex((p) => p.playerID === G.currentPlayer);
+      G.mapping = Object.fromEntries(
+        Object.entries(G.players).map(([playerID, value]) => [
+          playerID,
+          value.boardIndex!,
+        ])
+      );
+      const answer = G.mapping[G.currentPlayer];
+      let scores: Record<string, number> = {};
       if (
         Object.values(guesses).every((guess) => guess === answer) ||
         Object.values(guesses).every((guess) => guess !== answer)
       ) {
-        for (const p in guesses) {
-          G.players[p].score += 2;
-        }
+        Object.keys(guesses).forEach((p) => (scores[p] = 2));
       } else {
-        let scores: Record<string, number> = {};
         for (const p in guesses) {
           if (guesses[p] === answer) {
             scores[p] = (scores[p] || 0) + 2;
             scores[G.currentPlayer] = (scores[G.currentPlayer] || 0) + 1;
           } else {
-            const owner = G.board[G.players[p].guess].playerID;
+            const [owner] = Object.entries(G.mapping).find(
+              ([, index]) => index === guesses[p]
+            )!;
             scores[owner] = (scores[owner] || 0) + 1;
           }
         }
-        for (const p in scores) {
-          G.players[p].score += scores[p];
-        }
+      }
+      for (const p in scores) {
+        G.scores[p] += scores[p];
       }
     },
 
@@ -105,11 +135,16 @@ export const GuessPicture = makeGame({
       G.stage = "upload";
       G.description = "";
       G.board = [];
+      G.mapping = {};
       for (const playerID in G.players) {
         G.players[playerID].guess = undefined;
+        G.players[playerID].submission = undefined;
+        G.players[playerID].boardIndex = undefined;
       }
       const currentPlayerIndex = playOrder.indexOf(G.currentPlayer);
       G.currentPlayer = playOrder[(currentPlayerIndex + 1) % playOrder.length];
     },
   },
+
+  playerView: STRIP_SECRET,
 });

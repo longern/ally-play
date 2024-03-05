@@ -159,25 +159,10 @@ function Pick({ G, moves, playerID }: GuessPictureBoardProps) {
 function Confuse({ G, moves, playerID }: GuessPictureBoardProps) {
   const [selected, setSelected] = useState<number | undefined>(undefined);
 
-  return playerID === G.currentPlayer ? (
+  return G.players[playerID].submission !== undefined ? (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
       <Stack alignItems="center">
-        <img
-          src={G.board.find((p) => p.playerID === G.currentPlayer).picture}
-          alt=""
-        />
-        <Stack alignItems="center" sx={{ padding: 2 }}>
-          {G.description}
-        </Stack>
-      </Stack>
-    </Container>
-  ) : G.board.some((p) => p.playerID === playerID) ? (
-    <Container maxWidth="md" sx={{ paddingY: 2 }}>
-      <Stack alignItems="center">
-        <img
-          src={G.board.find((p) => p.playerID === playerID).picture}
-          alt=""
-        />
+        <img src={G.players[playerID].submission} alt="" />
         <Stack alignItems="center" sx={{ padding: 2 }}>
           {G.description}
         </Stack>
@@ -213,7 +198,7 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
 
   return playerID === G.currentPlayer ? (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
-      <ImageGrid pictures={G.board.map((p) => p.picture)} />
+      <ImageGrid pictures={G.board} />
       <Stack alignItems="center" sx={{ padding: 2 }}>
         Waiting
       </Stack>
@@ -221,7 +206,7 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
   ) : (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
       <ImageGrid
-        pictures={G.board.map((p) => p.picture)}
+        pictures={G.board}
         selected={selected}
         onSelectedChange={setSelected}
       />
@@ -234,7 +219,7 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
           disabled={
             selected === undefined ||
             G.currentPlayer === playerID ||
-            G.board[selected].playerID === playerID ||
+            selected === G.players[playerID].boardIndex ||
             G.players[playerID].guess !== undefined
           }
           onClick={() => moves.guess(selected)}
@@ -249,10 +234,7 @@ function Guess({ G, moves, playerID }: GuessPictureBoardProps) {
 function Reveal({ G, moves, playerID }: GuessPictureBoardProps) {
   return (
     <Container maxWidth="md" sx={{ paddingY: 2 }}>
-      <ImageGrid
-        pictures={G.board.map((p) => p.picture)}
-        selected={G.board.findIndex((p) => p.playerID === G.currentPlayer)}
-      />
+      <ImageGrid pictures={G.board} selected={G.mapping[G.currentPlayer]} />
       <Stack alignItems="center" sx={{ padding: 2 }}>
         {G.description}
       </Stack>
@@ -274,13 +256,14 @@ function Reveal({ G, moves, playerID }: GuessPictureBoardProps) {
 
 const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
   G,
+  ctx,
   moves,
   playerID,
 }) {
   return (
     <Stack direction="row" height="100%">
       <Box sx={{ width: 40, flexShrink: 0 }}>
-        {Object.entries(G.players).map(([id, player], index) => (
+        {ctx.playOrder.map((id, index) => (
           <Box
             key={id}
             sx={{
@@ -291,7 +274,7 @@ const GameBoard: GameBoardComponent<typeof GuessPicture> = function ({
               transition: "width 0.2s",
             }}
           >
-            {player.score}
+            {G.scores[id]}
           </Box>
         ))}
       </Box>

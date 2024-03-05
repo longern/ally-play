@@ -168,14 +168,14 @@ function RoomDialog({
           <Grid container sx={{ marginY: 4 }}>
             {lobbyState.matchData.map((p) => (
               <Grid key={p.playerID} item xs={4} md={2}>
-                <Stack alignItems="center" spacing={1}>
+                <Stack alignItems="center" spacing={1} paddingY={2}>
                   <Avatar src={p.avatar} />
                   <div>{p.playerName}</div>
                 </Stack>
               </Grid>
             ))}
             <Grid item xs={4} md={2}>
-              <Stack alignItems="center" spacing={1}>
+              <Stack alignItems="center" spacing={1} paddingY={2}>
                 <Avatar>
                   <AddIcon />
                 </Avatar>

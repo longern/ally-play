@@ -32,6 +32,11 @@ export type Game<
 > = {
   setup: ({ ctx }: { ctx: Ctx }) => GameState;
   moves: GameMoves;
+  playerView?: (props: {
+    G: GameState;
+    ctx: Ctx;
+    playerID: string;
+  }) => GameState;
 };
 
 export type GameClientMoves<Moves> = {
@@ -45,6 +50,7 @@ export type GameClientMoves<Moves> = {
 export type GameBoardComponent<T> = T extends Game<infer G, infer M>
   ? (props: {
       G: G;
+      ctx: Ctx;
       moves: GameClientMoves<M>;
       playerID: string;
       chatMessages: {
@@ -80,6 +86,22 @@ function randomID() {
   return Array.from(crypto.getRandomValues(new Uint32Array(4)))
     .map((n) => n.toString(36))
     .join("");
+}
+
+export function STRIP_SECRET<GameState>({
+  G,
+  playerID,
+}: {
+  G: GameState;
+  playerID: string;
+}) {
+  if (typeof G !== "object") return G;
+  const stripped = { ...G };
+  if ("secret" in stripped) delete stripped.secret;
+  if ("players" in stripped) {
+    stripped.players = { [playerID]: stripped.players[playerID] };
+  }
+  return stripped;
 }
 
 export function Client<T extends Game<any, any>>({
@@ -207,18 +229,21 @@ export function Client<T extends Game<any, any>>({
         JSON.stringify({
           type: "sync",
           playerID: player,
-          state: gameState,
+          state: game.playerView
+            ? game.playerView({ G: gameState, ctx, playerID: player })
+            : gameState,
           chatMessages,
         })
       );
     });
-  }, [chatMessages, ctx, gameState, playerID, socket]);
+  }, [chatMessages, ctx, game, gameState, playerID, socket]);
 
   return (
     gameState &&
     ctx &&
     createElement(board, {
       G: gameState,
+      ctx,
       moves,
       playerID,
       chatMessages,
