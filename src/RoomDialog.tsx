@@ -54,7 +54,7 @@ function useHelpText({ open, url }: { open: boolean; url: string }) {
       if (res.ok) {
         const manifest = await res.json();
         prevUrl.current = url;
-        setHelpText(manifest.help || "");
+        setHelpText(manifest.description || "");
       }
     });
   }, [url, open]);
