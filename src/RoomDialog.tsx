@@ -77,7 +77,10 @@ function RoomDialog({
       settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
     [settings]
   );
-  const { lobby, lobbyState, playerID } = useLobby({ config });
+  const { lobby, lobbyState, playerID } = useLobby({
+    playerName: settings.username,
+    config,
+  });
   const [showHelp, setShowHelp] = React.useState(false);
   const helpText = useHelpText({ open: showHelp, url: lobbyState.game?.url });
   const canvasRef = useRef<HTMLCanvasElement>(null);

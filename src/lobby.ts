@@ -19,6 +19,7 @@ type LobbyState = {
 };
 
 export function createLobby(options?: {
+  playerName?: string;
   game?: {
     name: string;
     url: string;
@@ -43,7 +44,7 @@ export function createLobby(options?: {
     runningMatch: false,
     matchData: [],
   };
-  let playerID = undefined;
+  let playerID: string = undefined;
 
   function handleDataFromGuest(guestID: string, data: any) {
     if (data?.type === "metadata") {
@@ -62,9 +63,8 @@ export function createLobby(options?: {
   }
 
   function handleDataFromHost(data: any) {
-    if (data?.type === "join") {
-      const { player: newPlayer }: { player: string } = data;
-      playerID = newPlayer;
+    if (data?.type === "joined") {
+      playerID = data.playerID;
       publish();
     } else if (data?.type === "metadata") {
       const { state: newState }: { state: LobbyState } = data;
@@ -75,19 +75,40 @@ export function createLobby(options?: {
 
   function handleConnectionFromGuest(connection: DataConnection) {
     const playerID = connection.peer;
-    connection.on("open", () => {
+
+    const handleJoin = (data: any) => {
+      if (data?.type !== "join" || data?.app !== "ally-play") return;
+
       connections.set(playerID, connection);
+      connection.send({ type: "joined", playerID });
+      connection.off("data", handleJoin);
       connection.on("data", (data: any) => {
         handleDataFromGuest(playerID, data);
       });
-      connection.send({ type: "join", player: playerID });
+
+      connection.on("close", () => {
+        if (state.runningMatch) return;
+        connections.delete(playerID);
+        state = {
+          ...state,
+          matchData: state.matchData.filter(
+            (player) => player.playerID !== playerID
+          ),
+        };
+        publish();
+        connections.forEach((connection) => {
+          connection.send({ type: "metadata", state });
+        });
+      });
+
       state = {
         ...state,
         matchData: [
           ...state.matchData,
           {
             playerID,
-            playerName: `Player ${state.matchData.length + 1}`,
+            playerName:
+              data?.playerName || `Player ${state.matchData.length + 1}`,
             ready: false,
           },
         ],
@@ -96,24 +117,15 @@ export function createLobby(options?: {
       connections.forEach((connection) => {
         connection.send({ type: "metadata", state });
       });
+    };
+
+    connection.on("open", () => {
+      connection.on("data", handleJoin);
     });
+
     connection.on("iceStateChanged", (iceState) => {
       if (!["failed", "disconnected", "closed"].includes(iceState)) return;
       connection.close();
-    });
-    connection.on("close", () => {
-      if (state.runningMatch) return;
-      connections.delete(playerID);
-      state = {
-        ...state,
-        matchData: state.matchData.filter(
-          (player) => player.playerID !== playerID
-        ),
-      };
-      publish();
-      connections.forEach((connection) => {
-        connection.send({ type: "metadata", state });
-      });
     });
   }
 
@@ -141,7 +153,13 @@ export function createLobby(options?: {
           roomID: id,
           hostID: "0",
           runningMatch: false,
-          matchData: [{ playerID: "0", playerName: "Host", ready: true }],
+          matchData: [
+            {
+              playerID: "0",
+              playerName: options.playerName || "Host",
+              ready: true,
+            },
+          ],
         };
         playerID = "0";
         publish();
@@ -164,6 +182,12 @@ export function createLobby(options?: {
               playOrder: state.matchData.map((player) => player.playerID),
               isHost,
               numPlayers: state.matchData.length,
+              playerNames: Object.fromEntries(
+                state.matchData.map((player) => [
+                  player.playerID,
+                  player.playerName,
+                ])
+              ),
             },
           }),
           new URL(iframe.src).origin
@@ -216,6 +240,11 @@ export function createLobby(options?: {
       connection.on("open", () => {
         connections.set(roomID, connection);
         connection.on("data", handleDataFromHost);
+        connection.send({
+          type: "join",
+          app: "ally-play",
+          playerName: options.playerName,
+        });
       });
       connection.on("error", (error) => {
         throw error;
@@ -281,8 +310,17 @@ export function createLobby(options?: {
 
 export type Lobby = ReturnType<typeof createLobby>;
 
-export function useLobby({ config }: { config?: any }) {
-  const lobby = useMemo(() => createLobby({ config }), [config]);
+export function useLobby({
+  playerName,
+  config,
+}: {
+  playerName?: string;
+  config?: any;
+}) {
+  const lobby = useMemo(
+    () => createLobby({ playerName, config }),
+    [config, playerName]
+  );
 
   const [lobbyState, setLobbyState] = useState<LobbyState>({
     roomID: "",
