@@ -35,11 +35,16 @@ const globalStyles = (
       html: {
         position: "relative",
         height: "calc(100% - env(keyboard-inset-height, 0px))",
-        transition: "height 0.2s",
+        transition: "height 0.25s",
       },
 
       "body, #root": {
         height: "100%",
+      },
+
+      "div.MuiDialog-root": {
+        bottom: "env(keyboard-inset-height, 0px)",
+        transition: "bottom 0.25s",
       },
     }}
   />
