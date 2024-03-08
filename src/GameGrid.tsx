@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -6,6 +6,8 @@ import {
   CardActionArea,
   CardContent,
   Grid,
+  Menu,
+  MenuItem,
   Stack,
   Typography,
 } from "@mui/material";
@@ -41,10 +43,48 @@ function GameGrid({
   onCreateRoom: (initialGame: Settings["installedGames"][number]) => void;
 }) {
   const [settings, setSettings] = [useSettings(), useSetSettings()];
+  const [contextMenu, setContextMenu] = useState<{
+    item: Settings["installedGames"][number];
+    mouseX: number;
+    mouseY: number;
+  } | null>(null);
 
   const { t } = useTranslation();
 
   const installedGames = settings?.installedGames ?? [];
+
+  const handleContextMenu =
+    (item: Settings["installedGames"][number]) =>
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      setContextMenu(
+        contextMenu === null
+          ? {
+              item,
+              mouseX: event.clientX,
+              mouseY: event.clientY,
+            }
+          : null
+      );
+    };
+
+  const deleteItem = () => {
+    setContextMenu(null);
+    const confirm = window.confirm(
+      t(`Are you sure you want to uninstall ${contextMenu.item.name}?`)
+    );
+    if (!confirm) return;
+    setSettings((settings) => {
+      if (!settings) return settings;
+
+      return {
+        ...settings,
+        installedGames: settings.installedGames.filter(
+          (installedGame) => installedGame.url !== contextMenu.item.url
+        ),
+      };
+    });
+  };
 
   return installedGames.length === 0 ? (
     <Stack
@@ -66,23 +106,7 @@ function GameGrid({
           <Card elevation={0}>
             <CardActionArea
               onClick={() => onCreateRoom(game)}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                const confirm = window.confirm(
-                  t("Are you sure you want to uninstall this game?")
-                );
-                if (!confirm) return;
-                setSettings((settings) => {
-                  if (!settings) return settings;
-
-                  return {
-                    ...settings,
-                    installedGames: settings.installedGames.filter(
-                      (installedGame) => installedGame.url !== game.url
-                    ),
-                  };
-                });
-              }}
+              onContextMenu={handleContextMenu(game)}
             >
               <Square>
                 {game.icon ? (
@@ -102,6 +126,19 @@ function GameGrid({
           </Card>
         </Grid>
       ))}
+
+      <Menu
+        open={contextMenu !== null}
+        onClose={() => setContextMenu(null)}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu != null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={deleteItem}>Delete</MenuItem>
+      </Menu>
     </Grid>
   );
 }
