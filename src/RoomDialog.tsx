@@ -16,7 +16,11 @@ import QRCode from "qrcode";
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
 import { Settings, useRoomID, useSettings } from "./StateProvider";
-import { Add as AddIcon, Help as HelpIcon } from "@mui/icons-material";
+import {
+  Add as AddIcon,
+  Help as HelpIcon,
+  WifiOff as WifiOffIcon,
+} from "@mui/icons-material";
 
 function roomURL(roomID: string) {
   const params = new URLSearchParams({ r: roomID });
@@ -77,7 +81,7 @@ function RoomDialog({
       settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
     [settings]
   );
-  const { lobby, lobbyState, playerID } = useLobby({
+  const { lobby, lobbyState, playerID, isConnected } = useLobby({
     playerName: settings.username,
     config,
   });
@@ -110,7 +114,14 @@ function RoomDialog({
   return (
     <HistoryDialog
       hash="room"
-      title={lobbyState.roomID && `${t("Room")} ${lobbyState.roomID}`}
+      title={
+        lobbyState.roomID && (
+          <span>
+            {`${t("Room")} ${lobbyState.roomID}`}
+            {!isConnected && <WifiOffIcon />}
+          </span>
+        )
+      }
       open={open}
       onClose={onClose}
     >

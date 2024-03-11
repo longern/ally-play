@@ -45,6 +45,7 @@ export function createLobby(options?: {
     matchData: [],
   };
   let playerID: string = undefined;
+  let isConnected = false;
 
   function handleDataFromGuest(guestID: string, data: any) {
     if (data?.type === "metadata") {
@@ -68,6 +69,7 @@ export function createLobby(options?: {
       publish();
     } else if (data?.type === "metadata") {
       const { state: newState }: { state: LobbyState } = data;
+      isConnected = true;
       state = newState;
       publish();
     }
@@ -101,6 +103,7 @@ export function createLobby(options?: {
         });
       });
 
+      if (state.runningMatch) return;
       state = {
         ...state,
         matchData: [
@@ -162,6 +165,11 @@ export function createLobby(options?: {
           ],
         };
         playerID = "0";
+        isConnected = true;
+        publish();
+      });
+      peer.on("disconnected", () => {
+        isConnected = false;
         publish();
       });
     });
@@ -236,6 +244,7 @@ export function createLobby(options?: {
   const joinMatch = function (roomID: string) {
     peer = new Peer({ config });
     peer.on("open", () => {
+      isConnected = true;
       const connection = peer.connect(`ally-play-${roomID}`);
       connection.on("open", () => {
         connections.set(roomID, connection);
@@ -249,6 +258,10 @@ export function createLobby(options?: {
       connection.on("error", (error) => {
         throw error;
       });
+    });
+    peer.on("disconnected", () => {
+      isConnected = false;
+      publish();
     });
   };
 
@@ -267,10 +280,14 @@ export function createLobby(options?: {
   };
 
   let subscriptions = new Set<
-    (state: { lobbyState: LobbyState; playerID: string }) => void
+    (state: {
+      lobbyState: LobbyState;
+      playerID: string;
+      isConnected: boolean;
+    }) => void
   >();
   function subscribe(
-    callback: (state: { lobbyState: LobbyState; playerID: string }) => void
+    callback: typeof subscriptions extends Set<infer T> ? T : never
   ) {
     subscriptions.add(callback);
     return function () {
@@ -280,7 +297,7 @@ export function createLobby(options?: {
 
   function publish() {
     subscriptions.forEach((callback) =>
-      callback({ lobbyState: state, playerID })
+      callback({ lobbyState: state, playerID, isConnected })
     );
   }
 
@@ -293,6 +310,7 @@ export function createLobby(options?: {
       runningMatch: false,
       matchData: [],
     };
+    isConnected = false;
     publish();
   };
 
@@ -330,12 +348,16 @@ export function useLobby({
     matchData: [],
   });
   const [playerID, setPlayerID] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const subscription = lobby.subscribe(({ lobbyState, playerID }) => {
-      setLobbyState(lobbyState);
-      setPlayerID(playerID);
-    });
+    const subscription = lobby.subscribe(
+      ({ lobbyState, playerID, isConnected }) => {
+        setLobbyState(lobbyState);
+        setPlayerID(playerID);
+        setIsConnected(isConnected);
+      }
+    );
 
     return () => {
       subscription();
@@ -343,5 +365,5 @@ export function useLobby({
     };
   }, [lobby]);
 
-  return { lobby, lobbyState, playerID } as const;
+  return { lobby, lobbyState, playerID, isConnected } as const;
 }
