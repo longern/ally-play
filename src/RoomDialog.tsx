@@ -6,10 +6,10 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
   Grid,
   IconButton,
   Stack,
-  Tooltip,
 } from "@mui/material";
 import QRCode from "qrcode";
 
@@ -164,20 +164,24 @@ function RoomDialog({
             >
               {lobbyState.game.name}
             </Box>
-            <Tooltip
-              describeChild
-              title={
-                helpText === null
-                  ? t("Loading...")
-                  : helpText || t("No help available")
-              }
-              onOpen={() => setShowHelp(true)}
-              onClose={() => setShowHelp(false)}
+            <IconButton
+              aria-label={t("Help")}
+              onClick={() => setShowHelp(true)}
             >
-              <IconButton aria-label={t("Help")}>
-                <HelpIcon />
-              </IconButton>
-            </Tooltip>
+              <HelpIcon />
+            </IconButton>
+            <Dialog
+              open={showHelp}
+              onClose={() => setShowHelp(false)}
+              fullWidth
+              maxWidth="sm"
+            >
+              <Box sx={{ padding: 2 }}>
+                {helpText === null
+                  ? t("Loading...")
+                  : helpText || t("No help available")}
+              </Box>
+            </Dialog>
           </Stack>
           <Grid container sx={{ marginY: 4 }}>
             {lobbyState.matchData.map((p) => (
