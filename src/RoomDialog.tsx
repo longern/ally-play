@@ -6,21 +6,21 @@ import {
   Button,
   CircularProgress,
   Container,
-  Dialog,
   Grid,
   IconButton,
   Stack,
 } from "@mui/material";
-import QRCode from "qrcode";
-
-import { HistoryDialog } from "./HistoryDialog";
-import { Lobby, useLobby } from "./lobby";
-import { Settings, useRoomID, useSettings } from "./StateProvider";
 import {
   Add as AddIcon,
   Help as HelpIcon,
   WifiOff as WifiOffIcon,
 } from "@mui/icons-material";
+import QRCode from "qrcode";
+
+import { HistoryDialog } from "./HistoryDialog";
+import { Lobby, useLobby } from "./lobby";
+import { Settings, useRoomID, useSettings } from "./StateProvider";
+import HelpTextDialog from "./HelpTextDialog";
 
 function roomURL(roomID: string) {
   const params = new URLSearchParams({ r: roomID });
@@ -47,25 +47,6 @@ function GameContainer({ lobby, gameUrl }: { lobby: Lobby; gameUrl: string }) {
   );
 }
 
-function useHelpText({ open, url }: { open: boolean; url: string }) {
-  const [helpText, setHelpText] = React.useState<string | null>(null);
-  const prevUrl = useRef(url);
-
-  useEffect(() => {
-    if (!open || prevUrl.current === url) return;
-    setHelpText(null);
-    fetch(`${new URL(url)}manifest.json`).then(async (res) => {
-      if (res.ok) {
-        const manifest = await res.json();
-        prevUrl.current = url;
-        setHelpText(manifest.description || "");
-      }
-    });
-  }, [url, open]);
-
-  return helpText;
-}
-
 function RoomDialog({
   gameRef,
   open,
@@ -86,7 +67,6 @@ function RoomDialog({
     config,
   });
   const [showHelp, setShowHelp] = React.useState(false);
-  const helpText = useHelpText({ open: showHelp, url: lobbyState.game?.url });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const roomID = useRoomID();
@@ -170,18 +150,11 @@ function RoomDialog({
             >
               <HelpIcon />
             </IconButton>
-            <Dialog
+            <HelpTextDialog
               open={showHelp}
               onClose={() => setShowHelp(false)}
-              fullWidth
-              maxWidth="sm"
-            >
-              <Box sx={{ padding: 2 }}>
-                {helpText === null
-                  ? t("Loading...")
-                  : helpText || t("No help available")}
-              </Box>
-            </Dialog>
+              url={lobbyState.game?.url}
+            />
           </Stack>
           <Grid container sx={{ marginY: 4 }}>
             {lobbyState.matchData.map((p) => (
