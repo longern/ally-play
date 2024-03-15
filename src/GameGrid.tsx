@@ -29,6 +29,7 @@ function Square({ children }: { children: React.ReactNode }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          "&>img": { maxWidth: "100%", maxHeight: "100%", background: "white" },
         }}
       >
         {children}
@@ -100,21 +101,17 @@ function GameGrid({
       </Typography>
     </Stack>
   ) : (
-    <Grid container spacing={2}>
+    <Grid container spacing={1}>
       {installedGames.map((game) => (
         <Grid item key={game.url} xs={6} md={3} lg={2}>
-          <Card elevation={0}>
+          <Card>
             <CardActionArea
               onClick={() => onCreateRoom(game)}
               onContextMenu={handleContextMenu(game)}
             >
               <Square>
                 {game.icon ? (
-                  <img
-                    src={game.icon}
-                    alt={game.name}
-                    style={{ width: "100%", height: "100%" }}
-                  />
+                  <img src={game.icon} alt={game.name} />
                 ) : (
                   <LaunchIcon sx={{ fontSize: 72 }} />
                 )}

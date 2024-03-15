@@ -131,7 +131,7 @@ function RoomDialog({
               alt={lobbyState.game.name}
               width="64"
               height="64"
-              style={{ borderRadius: "8px" }}
+              style={{ borderRadius: "8px", backgroundColor: "white" }}
             />
             <Box
               sx={{

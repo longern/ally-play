@@ -62,8 +62,15 @@ function Main({
   const { t } = useTranslation();
 
   return (
-    <Box sx={{ minHeight: 0, overflowY: "auto" }}>
-      <Container sx={{ margin: "auto" }}>
+    <Box
+      sx={{
+        flexGrow: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        backgroundColor: "rgba(0, 0, 0, 0.02)",
+      }}
+    >
+      <Container maxWidth="md" sx={{ paddingX: 1 }}>
         <Stack
           direction="row"
           spacing={1}
