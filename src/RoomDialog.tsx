@@ -19,7 +19,7 @@ import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
-import { Settings, useRoomID, useSettings } from "./StateProvider";
+import { GameApp, useRoomID, useSettings } from "./StateProvider";
 import HelpTextDialog from "./HelpTextDialog";
 
 function roomURL(roomID: string) {
@@ -52,7 +52,7 @@ function RoomDialog({
   open,
   onClose,
 }: {
-  gameRef?: React.MutableRefObject<Settings["installedGames"][number]>;
+  gameRef?: React.MutableRefObject<GameApp>;
   open: boolean;
   onClose: () => void;
 }) {

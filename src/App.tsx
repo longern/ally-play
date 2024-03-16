@@ -21,8 +21,7 @@ import {
   createTheme,
 } from "@mui/material";
 
-import { useSetIsHost, useSetRoomID } from "./StateProvider";
-import { Settings } from "./StateProvider";
+import { GameApp, useSetIsHost, useSetRoomID } from "./StateProvider";
 import GameGrid from "./GameGrid";
 import Header from "./Header";
 
@@ -54,7 +53,7 @@ function Main({
   onCreateRoom,
   onSearch,
 }: {
-  onCreateRoom: (initialGame: Settings["installedGames"][number]) => void;
+  onCreateRoom: (initialGame: GameApp) => void;
   onSearch: (search: string) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -118,9 +117,7 @@ function Fallback({ error }) {
 function App() {
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-  const gameRef = useRef<Settings["installedGames"][number] | undefined>(
-    undefined
-  );
+  const gameRef = useRef<GameApp | undefined>(undefined);
   const setRoomID = useSetRoomID();
   const setIsHost = useSetIsHost();
 
@@ -135,7 +132,7 @@ function App() {
   }, []);
 
   const handleCreateRoom = useCallback(
-    (game: Settings["installedGames"][number]) => {
+    (game: GameApp) => {
       gameRef.current = game;
       setIsHost(true);
       setRoomDialogOpen(true);

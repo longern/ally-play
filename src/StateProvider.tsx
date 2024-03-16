@@ -6,15 +6,17 @@ import React, {
   useState,
 } from "react";
 
+export type GameApp = {
+  name: string;
+  url: string;
+  icon?: string;
+};
+
 export type Settings = {
   avatar: string;
   language: string;
   username: string;
-  installedGames: {
-    name: string;
-    url: string;
-    icon?: string;
-  }[];
+  installedGames: GameApp[];
   turnServer:
     | {
         urls: string;

@@ -13,8 +13,7 @@ import {
 } from "@mui/material";
 import { Launch as LaunchIcon } from "@mui/icons-material";
 
-import { useSetSettings, useSettings } from "./StateProvider";
-import { Settings } from "./StateProvider";
+import { GameApp, useSetSettings, useSettings } from "./StateProvider";
 
 function Square({ children }: { children: React.ReactNode }) {
   return (
@@ -41,11 +40,11 @@ function Square({ children }: { children: React.ReactNode }) {
 function GameGrid({
   onCreateRoom,
 }: {
-  onCreateRoom: (initialGame: Settings["installedGames"][number]) => void;
+  onCreateRoom: (initialGame: GameApp) => void;
 }) {
   const [settings, setSettings] = [useSettings(), useSetSettings()];
   const [contextMenu, setContextMenu] = useState<{
-    item: Settings["installedGames"][number];
+    item: GameApp;
     mouseX: number;
     mouseY: number;
   } | null>(null);
@@ -55,8 +54,7 @@ function GameGrid({
   const installedGames = settings?.installedGames ?? [];
 
   const handleContextMenu =
-    (item: Settings["installedGames"][number]) =>
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (item: GameApp) => (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       setContextMenu(
         contextMenu === null
