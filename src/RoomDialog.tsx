@@ -19,7 +19,12 @@ import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
-import { GameApp, useRoomID, useSettings } from "./StateProvider";
+import {
+  GameApp,
+  useRoomID,
+  useSetSettings,
+  useSettings,
+} from "./StateProvider";
 import HelpTextDialog from "./HelpTextDialog";
 
 function roomURL(roomID: string) {
@@ -57,6 +62,7 @@ function RoomDialog({
   onClose: () => void;
 }) {
   const settings = useSettings();
+  const setSettings = useSetSettings();
   const config = useMemo(
     () =>
       settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
@@ -84,6 +90,25 @@ function RoomDialog({
     }
     return lobby.close;
   }, [open, gameRef, lobby, roomID]);
+
+  useEffect(() => {
+    if (!lobbyState.game) return;
+    setSettings((settings) => {
+      const recentlyPlayed = settings.recentlyPlayed
+        ? [...settings.recentlyPlayed]
+        : [];
+      const existingIndex = recentlyPlayed.findIndex(
+        (g) => g.url === lobbyState.game.url
+      );
+      if (existingIndex !== -1)
+        recentlyPlayed.unshift(recentlyPlayed.splice(existingIndex, 1)[0]);
+      else {
+        recentlyPlayed.unshift(lobbyState.game);
+        recentlyPlayed.splice(6);
+      }
+      return { ...settings, recentlyPlayed };
+    });
+  }, [lobbyState.game, setSettings]);
 
   useEffect(() => {
     if (!canvasRef.current || !lobbyState.roomID) return;

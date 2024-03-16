@@ -16,6 +16,7 @@ export type Settings = {
   avatar: string;
   language: string;
   username: string;
+  recentlyPlayed: GameApp[];
   installedGames: GameApp[];
   turnServer:
     | {
