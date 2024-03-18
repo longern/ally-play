@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 
 import { GameApp, useSetIsHost, useSetRoomID } from "./StateProvider";
-import GameGrid from "./GameGrid";
+import GameGrid, { RecentlyPlayed } from "./GameGrid";
 import Header from "./Header";
 
 const RoomDialog = React.lazy(() => import("./RoomDialog"));
@@ -91,6 +91,7 @@ function Main({
             }}
           />
         </Stack>
+        <RecentlyPlayed onCreateRoom={onCreateRoom} />
         <Typography variant="h5" gutterBottom>
           {t("Create room")}
         </Typography>

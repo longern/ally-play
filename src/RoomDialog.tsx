@@ -142,6 +142,7 @@ function RoomDialog({
           spacing={2}
         >
           <CircularProgress />
+          <Box>{!isConnected ? t("Connecting...") : t("Joining room...")}</Box>
         </Stack>
       ) : (
         <Container maxWidth="md" sx={{ height: "100%" }}>

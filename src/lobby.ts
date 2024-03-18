@@ -245,6 +245,7 @@ export function createLobby(options?: {
     peer = new Peer({ config });
     peer.on("open", () => {
       isConnected = true;
+      publish();
       const connection = peer.connect(`ally-play-${roomID}`);
       connection.on("open", () => {
         connections.set(roomID, connection);
