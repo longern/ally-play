@@ -11,6 +11,7 @@ import {
   MenuItem,
   Toolbar,
   Typography,
+  styled,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -158,10 +159,31 @@ function ScanDialog({
   );
 }
 
-function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
+const StyledInput = styled("input")({
+  maxWidth: "360px",
+  height: "36px",
+  margin: "12px",
+  marginRight: 0,
+  padding: "12px",
+  borderRadius: "18px",
+  backgroundColor: "rgba(128, 128, 128, 0.1)",
+  border: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontSize: "1rem",
+});
+
+function Header({
+  onSearch,
+  onSettingsClick,
+}: {
+  onSearch: (search: string) => void;
+  onSettingsClick: () => void;
+}) {
   const settings = useSettings();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   const handleInstall = useHandleInstall();
   const { t } = useTranslation();
@@ -188,12 +210,28 @@ function Header({ onSettingsClick }: { onSettingsClick: () => void }) {
 
   return (
     <Toolbar disableGutters sx={{ minHeight: 64, flexShrink: 0 }}>
-      <Avatar sx={{ width: "48px", height: "48px", margin: 1 }}></Avatar>
+      <Avatar sx={{ width: 40, height: 40, margin: 1 }}></Avatar>
       <Typography variant="h6" fontWeight="normal">
         {settings?.username}
       </Typography>
       <Box sx={{ flexGrow: 1 }} />
-      <IconButton size="large" onClick={(e) => setAnchorEl(e.currentTarget)}>
+      <StyledInput
+        placeholder="Room code/Game name/URL"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            if (!search) return;
+            setSearch("");
+            onSearch(search);
+          }
+        }}
+      />
+      <IconButton
+        size="large"
+        onClick={(e) => setAnchorEl(e.currentTarget)}
+        aria-label={t("Menu")}
+      >
         <AddIcon />
       </IconButton>
       <Menu

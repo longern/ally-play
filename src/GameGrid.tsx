@@ -86,7 +86,7 @@ export function RecentlyPlayed({
   };
 
   return recentlyPlayed.length === 0 ? null : (
-    <>
+    <Stack>
       <Typography variant="body1" gutterBottom>
         {t("Recently played")}
       </Typography>
@@ -137,10 +137,11 @@ export function RecentlyPlayed({
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
+        MenuListProps={{ disablePadding: true }}
       >
         <MenuItem onClick={deleteItem}>Delete</MenuItem>
       </Menu>
-    </>
+    </Stack>
   );
 }
 
@@ -238,6 +239,7 @@ function GameGrid({
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
+        MenuListProps={{ disablePadding: true }}
       >
         <MenuItem onClick={deleteItem}>Delete</MenuItem>
       </Menu>

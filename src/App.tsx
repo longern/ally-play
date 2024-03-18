@@ -15,7 +15,6 @@ import {
   CssBaseline,
   GlobalStyles,
   Stack,
-  TextField,
   ThemeProvider,
   Typography,
   createTheme,
@@ -51,13 +50,9 @@ const globalStyles = (
 
 function Main({
   onCreateRoom,
-  onSearch,
 }: {
   onCreateRoom: (initialGame: GameApp) => void;
-  onSearch: (search: string) => void;
 }) {
-  const [search, setSearch] = useState("");
-
   const { t } = useTranslation();
 
   return (
@@ -69,33 +64,14 @@ function Main({
         backgroundColor: "rgba(0, 0, 0, 0.02)",
       }}
     >
-      <Container maxWidth="md" sx={{ paddingX: 1 }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ paddingY: 1, marginBottom: 1 }}
-        >
-          <TextField
-            variant="filled"
-            size="small"
-            placeholder="Room code/Game name/URL"
-            fullWidth
-            hiddenLabel
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (!search) return;
-                onSearch(search);
-              }
-            }}
-          />
-        </Stack>
+      <Container maxWidth="md" sx={{ padding: 1 }}>
         <RecentlyPlayed onCreateRoom={onCreateRoom} />
-        <Typography variant="h5" gutterBottom>
-          {t("Create room")}
-        </Typography>
-        <GameGrid onCreateRoom={onCreateRoom} />
+        <Stack sx={{ marginTop: 2 }}>
+          <Typography variant="h5" gutterBottom>
+            {t("Create room")}
+          </Typography>
+          <GameGrid onCreateRoom={onCreateRoom} />
+        </Stack>
       </Container>
     </Box>
   );
@@ -173,8 +149,11 @@ function App() {
         <CssBaseline />
         {globalStyles}
         <Stack sx={{ height: "100%" }}>
-          <Header onSettingsClick={() => setSettingsDialogOpen(true)} />
-          <Main onCreateRoom={handleCreateRoom} onSearch={handleSearch} />
+          <Header
+            onSettingsClick={() => setSettingsDialogOpen(true)}
+            onSearch={handleSearch}
+          />
+          <Main onCreateRoom={handleCreateRoom} />
         </Stack>
         <Suspense>
           <RoomDialog
