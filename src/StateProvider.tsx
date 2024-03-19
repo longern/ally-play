@@ -14,7 +14,8 @@ export type GameApp = {
 
 export type Settings = {
   avatar: string;
-  language: string;
+  darkMode?: "light" | "dark";
+  language?: string;
   username: string;
   recentlyPlayed: GameApp[];
   installedGames: GameApp[];

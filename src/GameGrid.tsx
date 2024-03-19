@@ -6,12 +6,17 @@ import {
   CardActionArea,
   CardContent,
   Grid,
+  ListItemIcon,
+  ListItemText,
   Menu,
   MenuItem,
   Stack,
   Typography,
 } from "@mui/material";
-import { Launch as LaunchIcon } from "@mui/icons-material";
+import {
+  Delete as DeleteIcon,
+  Launch as LaunchIcon,
+} from "@mui/icons-material";
 
 import { GameApp, useSetSettings, useSettings } from "./StateProvider";
 
@@ -139,7 +144,12 @@ export function RecentlyPlayed({
         }
         MenuListProps={{ disablePadding: true }}
       >
-        <MenuItem onClick={deleteItem}>Delete</MenuItem>
+        <MenuItem onClick={deleteItem}>
+          <ListItemIcon>
+            <DeleteIcon />
+          </ListItemIcon>
+          <ListItemText primary={t("Delete")} />
+        </MenuItem>
       </Menu>
     </Stack>
   );
@@ -241,7 +251,12 @@ function GameGrid({
         }
         MenuListProps={{ disablePadding: true }}
       >
-        <MenuItem onClick={deleteItem}>Delete</MenuItem>
+        <MenuItem onClick={deleteItem}>
+          <ListItemIcon>
+            <DeleteIcon />
+          </ListItemIcon>
+          <ListItemText primary={t("Delete")} />
+        </MenuItem>
       </Menu>
     </Grid>
   );

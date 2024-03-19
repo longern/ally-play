@@ -18,9 +18,15 @@ import {
   ThemeProvider,
   Typography,
   createTheme,
+  useMediaQuery,
 } from "@mui/material";
 
-import { GameApp, useSetIsHost, useSetRoomID } from "./StateProvider";
+import {
+  GameApp,
+  useSetIsHost,
+  useSetRoomID,
+  useSettings,
+} from "./StateProvider";
 import GameGrid, { RecentlyPlayed } from "./GameGrid";
 import Header from "./Header";
 
@@ -95,18 +101,24 @@ function App() {
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const gameRef = useRef<GameApp | undefined>(undefined);
+  const settings = useSettings();
+  const preferDarkScheme = useMediaQuery("(prefers-color-scheme: dark)");
   const setRoomID = useSetRoomID();
   const setIsHost = useSetIsHost();
 
+  const colorTheme = useMemo(() => {
+    if (settings?.darkMode === undefined) {
+      return preferDarkScheme ? "dark" : "light";
+    }
+    return settings.darkMode;
+  }, [settings?.darkMode, preferDarkScheme]);
+
   const theme = useMemo(() => {
     return createTheme({
-      typography: {
-        button: {
-          textTransform: "none",
-        },
-      },
+      palette: { mode: colorTheme },
+      typography: { button: { textTransform: "none" } },
     });
-  }, []);
+  }, [colorTheme]);
 
   const handleCreateRoom = useCallback(
     (game: GameApp) => {
@@ -126,6 +138,11 @@ function App() {
     },
     [setRoomID]
   );
+
+  const handleRoomDialogClose = useCallback(() => {
+    gameRef.current = undefined;
+    setRoomDialogOpen(false);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -159,10 +176,7 @@ function App() {
           <RoomDialog
             gameRef={gameRef}
             open={roomDialogOpen}
-            onClose={() => {
-              gameRef.current = undefined;
-              setRoomDialogOpen(false);
-            }}
+            onClose={handleRoomDialogClose}
           />
         </Suspense>
         <Suspense>

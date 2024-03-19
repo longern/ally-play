@@ -6,6 +6,7 @@ const resources = {
     translation: {
       "Cancel ready": "Cancel ready",
       "Create room": "Create room",
+      Delete: "Delete",
       "Get ready": "Get ready",
       "Join room": "Join room",
       "Not ready": "Not ready",
