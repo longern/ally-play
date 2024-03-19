@@ -9,6 +9,7 @@ import {
   Grid,
   IconButton,
   Stack,
+  TextField,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -52,6 +53,18 @@ function GameContainer({ lobby, gameUrl }: { lobby: Lobby; gameUrl: string }) {
   );
 }
 
+function QRCodeCanvas({ text }: { text: string }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    QRCode.toDataURL(text, { width: 256 }).then((url) => {
+      imageRef.current.src = url;
+    });
+  }, [text]);
+
+  return <img ref={imageRef} width={256} height={256} alt="QR Code" />;
+}
+
 function RoomDialog({
   gameRef,
   open,
@@ -73,7 +86,6 @@ function RoomDialog({
     config,
   });
   const [showHelp, setShowHelp] = React.useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const roomID = useRoomID();
   const { t } = useTranslation();
@@ -110,12 +122,6 @@ function RoomDialog({
     });
   }, [lobbyState.game, setSettings]);
 
-  useEffect(() => {
-    if (!canvasRef.current || !lobbyState.roomID) return;
-    const url = roomURL(lobbyState.roomID);
-    QRCode.toCanvas(canvasRef.current, url, { width: 256 });
-  }, [lobbyState.roomID]);
-
   return (
     <HistoryDialog
       hash="room"
@@ -145,7 +151,7 @@ function RoomDialog({
           <Box>{!isConnected ? t("Connecting...") : t("Joining room...")}</Box>
         </Stack>
       ) : (
-        <Container maxWidth="md" sx={{ height: "100%" }}>
+        <Container maxWidth="md" sx={{ height: "100%", padding: 2 }}>
           <Stack
             direction="row"
             alignItems="center"
@@ -202,20 +208,52 @@ function RoomDialog({
           </Grid>
           {lobbyState.hostID === me.playerID ? (
             <Stack alignItems="center" spacing={2}>
-              <canvas ref={canvasRef} width={256} height={256}></canvas>
-              <Stack direction="row" spacing={2}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => {
-                    navigator.clipboard &&
-                      navigator.clipboard.writeText(roomURL(lobbyState.roomID));
+              <QRCodeCanvas text={roomURL(lobbyState.roomID)} />
+              <Stack spacing={2}>
+                <TextField
+                  size="small"
+                  label={t("Room URL")}
+                  value={roomURL(lobbyState.roomID)}
+                  InputProps={{ readOnly: true }}
+                  onFocus={(e) => e.target.select()}
+                  fullWidth
+                />
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    width: 256,
+                    "& > *": { flexBasis: "50%" },
                   }}
                 >
-                  {t("Invite")}
-                </Button>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    disabled={!navigator.clipboard}
+                    onClick={() => {
+                      navigator.clipboard.writeText(roomURL(lobbyState.roomID));
+                    }}
+                  >
+                    {t("Copy link")}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    disabled={!navigator.share}
+                    onClick={() => {
+                      navigator.share({
+                        text: t("We are playing {{gameName}}, click to join:", {
+                          gameName: lobbyState.game.name,
+                        }),
+                        url: roomURL(lobbyState.roomID),
+                      });
+                    }}
+                  >
+                    {t("Share")}
+                  </Button>
+                </Stack>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="large"
                   onClick={lobby.startGame}
                 >

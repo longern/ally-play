@@ -13,6 +13,14 @@ const resources = {
       Start: "Start",
       Ready: "Ready",
       Reload: "Reload",
+      "We are playing {{gameName}}, click to join:":
+        "We are playing {{gameName}}, click to join:",
+    },
+  },
+  zh: {
+    translation: {
+      "We are playing {{gameName}}, click to join:":
+        "我们在玩 {{gameName}}，点击加入：",
     },
   },
 };
