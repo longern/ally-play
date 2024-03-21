@@ -177,12 +177,23 @@ export function createLobby(options?: {
 
   const createServer = function (iframe: HTMLIFrameElement) {
     const isHost = playerID === state.hostID;
+    const {
+      promise: loadedPromise,
+      resolve: resolveLoaded,
+      reject: rejectLoaded,
+    } = Promise.withResolvers<void>();
+
+    setTimeout(() => {
+      rejectLoaded(new Error("Timeout"));
+    }, 15000);
+
     const handleMessage = (event: MessageEvent<string>) => {
       if (event.source !== iframe.contentWindow) return;
       const data = JSON.parse(event.data);
 
       if (data.type === "setup") {
-        iframe.contentWindow!.postMessage(
+        resolveLoaded();
+        iframe.contentWindow.postMessage(
           JSON.stringify({
             type: "setup",
             playerID,
@@ -212,10 +223,11 @@ export function createLobby(options?: {
 
     const handlers = isHost
       ? Array.from(connections).map(([playerID, connection]) => {
-          const handler = (data: string) => {
+          const handler = async (data: string) => {
             const message = JSON.parse(data);
             message.playerID = playerID;
-            iframe.contentWindow!.postMessage(
+            await loadedPromise;
+            iframe.contentWindow.postMessage(
               JSON.stringify(message),
               new URL(iframe.src).origin
             );
@@ -224,8 +236,9 @@ export function createLobby(options?: {
           return [playerID, handler] as const;
         })
       : Array.from(connections).map(([key, connection]) => {
-          const handler = (data: string) => {
-            iframe.contentWindow!.postMessage(data, new URL(iframe.src).origin);
+          const handler = async (data: string) => {
+            await loadedPromise;
+            iframe.contentWindow.postMessage(data, new URL(iframe.src).origin);
           };
           connection.on("data", handler);
           return [key, handler] as const;
