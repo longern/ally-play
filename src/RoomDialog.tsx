@@ -13,7 +13,9 @@ import {
 } from "@mui/material";
 import {
   Add as AddIcon,
+  ContentCopy as ContentCopyIcon,
   Help as HelpIcon,
+  Share as ShareIcon,
   WifiOff as WifiOffIcon,
 } from "@mui/icons-material";
 import QRCode from "qrcode";
@@ -210,48 +212,42 @@ function RoomDialog({
             <Stack alignItems="center" spacing={2}>
               <QRCodeCanvas text={roomURL(lobbyState.roomID)} />
               <Stack spacing={2}>
-                <TextField
-                  size="small"
-                  label={t("Room URL")}
-                  value={roomURL(lobbyState.roomID)}
-                  InputProps={{ readOnly: true }}
-                  onFocus={(e) => e.target.select()}
-                  fullWidth
-                />
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  sx={{
-                    width: 256,
-                    "& > *": { flexBasis: "50%" },
-                  }}
-                >
-                  <Button
-                    variant="outlined"
-                    size="large"
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <TextField
+                    size="small"
+                    label={t("Room URL")}
+                    value={roomURL(lobbyState.roomID)}
+                    InputProps={{ readOnly: true }}
+                    onFocus={(e) => e.target.select()}
+                    fullWidth
+                  />
+                  <IconButton
+                    aria-label={t("Copy")}
                     disabled={!navigator.clipboard}
-                    onClick={() => {
-                      navigator.clipboard.writeText(roomURL(lobbyState.roomID));
-                    }}
+                    onClick={() =>
+                      navigator.clipboard.writeText(roomURL(lobbyState.roomID))
+                    }
                   >
-                    {t("Copy link")}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    disabled={!navigator.share}
-                    onClick={() => {
-                      navigator.share({
-                        text: t("We are playing {{gameName}}, click to join:", {
-                          gameName: lobbyState.game.name,
-                        }),
-                        url: roomURL(lobbyState.roomID),
-                      });
-                    }}
-                  >
-                    {t("Share")}
-                  </Button>
-                </Stack>
+                    <ContentCopyIcon />
+                  </IconButton>
+                  {navigator.share && (
+                    <IconButton
+                      aria-label={t("Share")}
+                      disabled={!navigator.share}
+                      onClick={() => {
+                        navigator.share({
+                          text: t(
+                            "We are playing {{gameName}}, click to join:",
+                            { gameName: lobbyState.game.name }
+                          ),
+                          url: roomURL(lobbyState.roomID),
+                        });
+                      }}
+                    >
+                      <ShareIcon />
+                    </IconButton>
+                  )}
+                </Box>
                 <Button
                   variant="contained"
                   size="large"
