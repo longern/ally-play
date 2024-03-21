@@ -22,12 +22,7 @@ import QRCode from "qrcode";
 
 import { HistoryDialog } from "./HistoryDialog";
 import { Lobby, useLobby } from "./lobby";
-import {
-  GameApp,
-  useRoomID,
-  useSetSettings,
-  useSettings,
-} from "./StateProvider";
+import { GameApp, useSetSettings, useSettings } from "./StateProvider";
 import HelpTextDialog from "./HelpTextDialog";
 
 function roomURL(roomID: string) {
@@ -69,10 +64,12 @@ function QRCodeCanvas({ text }: { text: string }) {
 
 function RoomDialog({
   gameRef,
+  roomID,
   open,
   onClose,
 }: {
   gameRef?: React.MutableRefObject<GameApp>;
+  roomID?: string;
   open: boolean;
   onClose: () => void;
 }) {
@@ -81,7 +78,7 @@ function RoomDialog({
   const config = useMemo(
     () =>
       settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
-    [settings]
+    [settings.turnServer]
   );
   const { lobby, lobbyState, playerID, isConnected } = useLobby({
     playerName: settings.username,
@@ -89,7 +86,6 @@ function RoomDialog({
   });
   const [showHelp, setShowHelp] = React.useState(false);
 
-  const roomID = useRoomID();
   const { t } = useTranslation();
 
   const me = lobbyState.matchData.find((p) => p.playerID === playerID);

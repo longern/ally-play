@@ -234,7 +234,7 @@ export function createLobby(options?: {
     const close = function () {
       window.removeEventListener("message", handleMessage);
       handlers.forEach(([key, handler]) => {
-        connections.get(key).off("data", handler);
+        connections.get(key)?.off("data", handler);
       });
     };
 
@@ -304,6 +304,8 @@ export function createLobby(options?: {
 
   const close = function () {
     peer?.destroy();
+    connections.forEach((connection) => connection.close());
+    connections.clear();
     state = {
       roomID: "",
       hostID: "",

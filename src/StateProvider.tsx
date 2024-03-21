@@ -49,22 +49,12 @@ function useSettingsState() {
   return [settings, setSettings] as const;
 }
 
-function useRoomIDState() {
-  const [roomID, setRoomID] = useState<string | null>(null);
-
-  return [roomID, setRoomID] as const;
-}
-
 type GlobalState = {
   settings: Settings;
-  roomID: string | undefined;
-  isHost: boolean;
 };
 
 type SetGlobalState = {
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
-  setRoomID: React.Dispatch<React.SetStateAction<string | undefined>>;
-  setIsHost: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const StateContext = createContext<GlobalState | null>(null);
@@ -72,20 +62,11 @@ const SetStateContext = createContext<SetGlobalState | null>(null);
 
 export function StateProvider({ children }) {
   const [settings, setSettings] = useSettingsState();
-  const [roomID, setRoomID] = useRoomIDState();
-  const [isHost, setIsHost] = useState(false);
 
-  const setState = useMemo(
-    () => ({
-      setSettings,
-      setRoomID,
-      setIsHost,
-    }),
-    [setSettings, setRoomID, setIsHost]
-  );
+  const setState = useMemo(() => ({ setSettings }), [setSettings]);
 
   return (
-    <StateContext.Provider value={{ settings, roomID, isHost }}>
+    <StateContext.Provider value={{ settings }}>
       <SetStateContext.Provider value={setState}>
         {children}
       </SetStateContext.Provider>
@@ -101,24 +82,4 @@ export function useSettings() {
 export function useSetSettings() {
   const { setSettings } = useContext(SetStateContext);
   return setSettings;
-}
-
-export function useRoomID() {
-  const { roomID } = useContext(StateContext);
-  return roomID;
-}
-
-export function useSetRoomID() {
-  const { setRoomID } = useContext(SetStateContext);
-  return setRoomID;
-}
-
-export function useIsHost() {
-  const { isHost } = useContext(StateContext);
-  return isHost;
-}
-
-export function useSetIsHost() {
-  const { setIsHost } = useContext(SetStateContext);
-  return setIsHost;
 }

@@ -21,12 +21,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 
-import {
-  GameApp,
-  useSetIsHost,
-  useSetRoomID,
-  useSettings,
-} from "./StateProvider";
+import { GameApp, useSettings } from "./StateProvider";
 import GameGrid, { RecentlyPlayed } from "./GameGrid";
 import Header from "./Header";
 
@@ -98,19 +93,16 @@ function Fallback({ error }) {
 }
 
 function App() {
+  const [roomID, setRoomID] = useState<string | undefined>(undefined);
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const gameRef = useRef<GameApp | undefined>(undefined);
   const settings = useSettings();
   const preferDarkScheme = useMediaQuery("(prefers-color-scheme: dark)");
-  const setRoomID = useSetRoomID();
-  const setIsHost = useSetIsHost();
 
   const colorTheme = useMemo(() => {
-    if (settings?.darkMode === undefined) {
-      return preferDarkScheme ? "dark" : "light";
-    }
-    return settings.darkMode;
+    if (settings?.darkMode !== undefined) return settings.darkMode;
+    return preferDarkScheme ? "dark" : "light";
   }, [settings?.darkMode, preferDarkScheme]);
 
   const theme = useMemo(() => {
@@ -120,14 +112,10 @@ function App() {
     });
   }, [colorTheme]);
 
-  const handleCreateRoom = useCallback(
-    (game: GameApp) => {
-      gameRef.current = game;
-      setIsHost(true);
-      setRoomDialogOpen(true);
-    },
-    [setIsHost]
-  );
+  const handleCreateRoom = useCallback((game: GameApp) => {
+    gameRef.current = game;
+    setRoomDialogOpen(true);
+  }, []);
 
   const handleSearch = useCallback(
     (search: string) => {
@@ -142,7 +130,8 @@ function App() {
   const handleRoomDialogClose = useCallback(() => {
     gameRef.current = undefined;
     setRoomDialogOpen(false);
-  }, []);
+    setRoomID(undefined);
+  }, [setRoomID]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -175,6 +164,7 @@ function App() {
         <Suspense>
           <RoomDialog
             gameRef={gameRef}
+            roomID={roomID}
             open={roomDialogOpen}
             onClose={handleRoomDialogClose}
           />
