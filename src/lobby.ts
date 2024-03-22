@@ -183,7 +183,7 @@ export function createLobby(options?: {
       reject: rejectLoaded,
     } = Promise.withResolvers<void>();
 
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       rejectLoaded(new Error("Timeout"));
     }, 15000);
 
@@ -193,6 +193,7 @@ export function createLobby(options?: {
 
       if (data.type === "setup") {
         resolveLoaded();
+        clearTimeout(timeout);
         iframe.contentWindow.postMessage(
           JSON.stringify({
             type: "setup",
@@ -245,6 +246,7 @@ export function createLobby(options?: {
         });
 
     const close = function () {
+      clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
       handlers.forEach(([key, handler]) => {
         connections.get(key)?.off("data", handler);
