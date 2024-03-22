@@ -211,7 +211,16 @@ function Header({
   return (
     <Toolbar disableGutters sx={{ minHeight: 64, flexShrink: 0 }}>
       <Avatar sx={{ width: 40, height: 40, margin: 1 }}></Avatar>
-      <Typography variant="h6" fontWeight="normal">
+      <Typography
+        variant="h6"
+        fontWeight="normal"
+        sx={{
+          width: 96,
+          flexShrink: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {settings?.username}
       </Typography>
       <Box sx={{ flexGrow: 1 }} />
