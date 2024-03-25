@@ -36,7 +36,7 @@ function GameContainer({ lobby, gameUrl }: { lobby: Lobby; gameUrl: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const server = lobby.createServer(iframeRef.current);
+    const server = lobby.bindIframe(iframeRef.current);
     return server.close;
   }, [lobby]);
 

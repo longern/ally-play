@@ -1,5 +1,5 @@
-import Peer, { DataConnection } from "peerjs";
 import { useEffect, useMemo, useState } from "react";
+import { PeerServer, PeerSocket, Socket } from "./peer";
 
 type LobbyState = {
   roomID: string;
@@ -31,11 +31,13 @@ export function createLobby(options?: {
   const config = options.config ?? {
     iceServers: [
       { urls: "STUN:freestun.net:3479" },
+      { urls: "STUN:stun.cloudflare.com:3478" },
       { urls: "TURN:freeturn.net:3478", username: "free", credential: "free" },
     ],
   };
-  let peer: Peer | null = null;
-  const connections = new Map<string, DataConnection>();
+
+  const abortController = new AbortController();
+  const connections = new Map<string, Socket>();
 
   let state: LobbyState = {
     roomID: "",
@@ -54,7 +56,7 @@ export function createLobby(options?: {
           player.playerID === guestID ? { ...player, ...playerDelta } : player
         );
         connections.forEach((connection) => {
-          connection.send({ type: "metadata", state });
+          connection.send(JSON.stringify({ type: "metadata", state }));
         });
         publish();
       }
@@ -63,7 +65,8 @@ export function createLobby(options?: {
     }
   }
 
-  function handleDataFromHost(data: any) {
+  function handleDataFromHost(event: MessageEvent<string>) {
+    const data = JSON.parse(event.data);
     if (data?.type === "joined") {
       playerID = data.playerID;
       publish();
@@ -75,20 +78,22 @@ export function createLobby(options?: {
     }
   }
 
-  function handleConnectionFromGuest(connection: DataConnection) {
-    const playerID = connection.peer;
+  function handleConnectionFromGuest(event: CustomEvent<Socket>) {
+    const connection = event.detail;
+    const playerID = crypto.randomUUID();
 
-    const handleJoin = (data: any) => {
+    const handleJoin = (event: MessageEvent<string>) => {
+      const data = JSON.parse(event.data);
       if (data?.type !== "join" || data?.app !== "ally-play") return;
 
       connections.set(playerID, connection);
-      connection.send({ type: "joined", playerID });
-      connection.off("data", handleJoin);
-      connection.on("data", (data: any) => {
+      connection.send(JSON.stringify({ type: "joined", playerID }));
+      connection.removeEventListener("message", handleJoin);
+      connection.addEventListener("message", (data: any) => {
         handleDataFromGuest(playerID, data);
       });
 
-      connection.on("close", () => {
+      connection.addEventListener("close", () => {
         if (state.runningMatch) return;
         connections.delete(playerID);
         state = {
@@ -99,7 +104,7 @@ export function createLobby(options?: {
         };
         publish();
         connections.forEach((connection) => {
-          connection.send({ type: "metadata", state });
+          connection.send(JSON.stringify({ type: "metadata", state }));
         });
       });
 
@@ -118,16 +123,13 @@ export function createLobby(options?: {
       };
       publish();
       connections.forEach((connection) => {
-        connection.send({ type: "metadata", state });
+        connection.send(JSON.stringify({ type: "metadata", state }));
       });
     };
 
-    connection.on("open", () => {
-      connection.on("data", handleJoin);
-    });
+    connection.addEventListener("message", handleJoin);
 
-    connection.on("iceStateChanged", (iceState) => {
-      if (!["failed", "disconnected", "closed"].includes(iceState)) return;
+    abortController.signal.addEventListener("abort", () => {
       connection.close();
     });
   }
@@ -139,43 +141,44 @@ export function createLobby(options?: {
   }) {
     state = { ...state, game };
     connections.forEach((connection) => {
-      connection.send({ type: "metadata", state });
+      connection.send(JSON.stringify({ type: "metadata", state }));
     });
     publish();
   };
 
-  const createRoom = async function () {
-    return new Promise<string>((resolve) => {
-      const id = Math.random().toFixed(6).slice(2);
-      peer = new Peer(`ally-play-${id}`, { config });
-      peer.on("open", () => {
-        peer.on("connection", handleConnectionFromGuest);
-        resolve(id);
-        state = {
-          game: state.game,
-          roomID: id,
-          hostID: "0",
-          runningMatch: false,
-          matchData: [
-            {
-              playerID: "0",
-              playerName: options.playerName || "Host",
-              ready: true,
-            },
-          ],
-        };
-        playerID = "0";
-        isConnected = true;
-        publish();
-      });
-      peer.on("disconnected", () => {
-        isConnected = false;
-        publish();
-      });
+  const createRoom = function () {
+    const id = Math.random().toFixed(6).slice(2);
+    const peerServer = new PeerServer(config);
+    peerServer.bind(`ally-play-${id}`);
+    peerServer.addEventListener("open", () => {
+      peerServer.addEventListener("connection", handleConnectionFromGuest);
+      state = {
+        game: state.game,
+        roomID: id,
+        hostID: "0",
+        runningMatch: false,
+        matchData: [
+          {
+            playerID: "0",
+            playerName: options.playerName || "Host",
+            ready: true,
+          },
+        ],
+      };
+      playerID = "0";
+      isConnected = true;
+      publish();
+    });
+    peerServer.addEventListener("disconnected", () => {
+      isConnected = false;
+      publish();
+    });
+    abortController.signal.addEventListener("abort", () => {
+      peerServer.close();
     });
   };
 
-  const createServer = function (iframe: HTMLIFrameElement) {
+  const bindIframe = function (iframe: HTMLIFrameElement) {
     const isHost = playerID === state.hostID;
     const {
       promise: loadedPromise,
@@ -224,8 +227,8 @@ export function createLobby(options?: {
 
     const handlers = isHost
       ? Array.from(connections).map(([playerID, connection]) => {
-          const handler = async (data: string) => {
-            const message = JSON.parse(data);
+          const handler = async (event: MessageEvent<string>) => {
+            const message = JSON.parse(event.data);
             message.playerID = playerID;
             await loadedPromise;
             iframe.contentWindow.postMessage(
@@ -233,15 +236,18 @@ export function createLobby(options?: {
               new URL(iframe.src).origin
             );
           };
-          connection.on("data", handler);
+          connection.addEventListener("message", handler);
           return [playerID, handler] as const;
         })
       : Array.from(connections).map(([key, connection]) => {
-          const handler = async (data: string) => {
+          const handler = async (event: MessageEvent<string>) => {
             await loadedPromise;
-            iframe.contentWindow.postMessage(data, new URL(iframe.src).origin);
+            iframe.contentWindow.postMessage(
+              event.data,
+              new URL(iframe.src).origin
+            );
           };
-          connection.on("data", handler);
+          connection.addEventListener("message", handler);
           return [key, handler] as const;
         });
 
@@ -249,7 +255,7 @@ export function createLobby(options?: {
       clearTimeout(timeout);
       window.removeEventListener("message", handleMessage);
       handlers.forEach(([key, handler]) => {
-        connections.get(key)?.off("data", handler);
+        connections.get(key)?.removeEventListener("message", handler);
       });
     };
 
@@ -257,41 +263,43 @@ export function createLobby(options?: {
   };
 
   const joinMatch = function (roomID: string) {
-    peer = new Peer({ config });
-    peer.on("open", () => {
+    const peer = new PeerSocket(`ally-play-${roomID}`, config);
+    peer.addEventListener("open", () => {
       isConnected = true;
       publish();
-      const connection = peer.connect(`ally-play-${roomID}`);
-      connection.on("open", () => {
-        connections.set(roomID, connection);
-        connection.on("data", handleDataFromHost);
-        connection.send({
+      connections.set(roomID, peer);
+      peer.send(
+        JSON.stringify({
           type: "join",
           app: "ally-play",
           playerName: options.playerName,
-        });
-      });
-      connection.on("error", (error) => {
-        throw error;
-      });
+        })
+      );
     });
-    peer.on("disconnected", () => {
+    peer.addEventListener("message", handleDataFromHost);
+    peer.addEventListener("error", (error) => {
+      throw error;
+    });
+    peer.addEventListener("closed", () => {
       isConnected = false;
       publish();
+    });
+    abortController.signal.addEventListener("abort", () => {
+      peer.close();
     });
   };
 
   const startGame = function () {
     state = { ...state, runningMatch: true };
     connections.forEach((connection) => {
-      connection.send({ type: "metadata", state });
+      connection.send(JSON.stringify({ type: "metadata", state }));
     });
     publish();
   };
 
   const setReady = function (ready: boolean) {
     connections.forEach((connection) => {
-      connection.send({ type: "metadata", player: { ready } });
+      connection.send(JSON.stringify({ type: "metadata", player: { ready } }));
     });
   };
 
@@ -318,8 +326,7 @@ export function createLobby(options?: {
   }
 
   const close = function () {
-    peer?.destroy();
-    connections.forEach((connection) => connection.close());
+    abortController.abort();
     connections.clear();
     state = {
       roomID: "",
@@ -333,9 +340,9 @@ export function createLobby(options?: {
   };
 
   return {
+    bindIframe,
     changeGame,
     createRoom,
-    createServer,
     joinMatch,
     startGame,
     setReady,
