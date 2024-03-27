@@ -49,7 +49,8 @@ export function createLobby(options?: {
   let playerID: string = undefined;
   let isConnected = false;
 
-  function handleDataFromGuest(guestID: string, data: any) {
+  function handleDataFromGuest(guestID: string, event: MessageEvent<string>) {
+    const data = JSON.parse(event.data);
     if (data?.type === "metadata") {
       function updatePlayer(playerDelta: Partial<LobbyState["matchData"][0]>) {
         state.matchData = state.matchData.map((player) =>
@@ -66,14 +67,16 @@ export function createLobby(options?: {
   }
 
   function handleDataFromHost(event: MessageEvent<string>) {
-    const data = JSON.parse(event.data);
+    const data = JSON.parse(event.data) as
+      | { type: "joined"; playerID: string }
+      | { type: "metadata"; state: LobbyState }
+      | any;
     if (data?.type === "joined") {
       playerID = data.playerID;
       publish();
     } else if (data?.type === "metadata") {
-      const { state: newState }: { state: LobbyState } = data;
       isConnected = true;
-      state = newState;
+      state = data.state;
       publish();
     }
   }
@@ -89,8 +92,8 @@ export function createLobby(options?: {
       connections.set(playerID, connection);
       connection.send(JSON.stringify({ type: "joined", playerID }));
       connection.removeEventListener("message", handleJoin);
-      connection.addEventListener("message", (data: any) => {
-        handleDataFromGuest(playerID, data);
+      connection.addEventListener("message", (event: MessageEvent<string>) => {
+        handleDataFromGuest(playerID, event);
       });
 
       connection.addEventListener("close", () => {
@@ -197,22 +200,19 @@ export function createLobby(options?: {
       if (data.type === "setup") {
         resolveLoaded();
         clearTimeout(timeout);
+        const ctx = {
+          playOrder: state.matchData.map((player) => player.playerID),
+          isHost,
+          numPlayers: state.matchData.length,
+          playerNames: Object.fromEntries(
+            state.matchData.map((player) => [
+              player.playerID,
+              player.playerName,
+            ])
+          ),
+        };
         iframe.contentWindow.postMessage(
-          JSON.stringify({
-            type: "setup",
-            playerID,
-            ctx: {
-              playOrder: state.matchData.map((player) => player.playerID),
-              isHost,
-              numPlayers: state.matchData.length,
-              playerNames: Object.fromEntries(
-                state.matchData.map((player) => [
-                  player.playerID,
-                  player.playerName,
-                ])
-              ),
-            },
-          }),
+          JSON.stringify({ type: "setup", playerID, ctx }),
           new URL(iframe.src).origin
         );
       } else if (isHost) {

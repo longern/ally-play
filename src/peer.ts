@@ -7,6 +7,17 @@ const DEFAULT_SIGNAL_ENDPOINT =
   process.env.REACT_APP_DEFAULT_SIGNAL_ENDPOINT ||
   `wss://${window.location.host}/signal`;
 
+function waitIceGathering(peer: RTCPeerConnection) {
+  return new Promise<RTCSessionDescription>((resolve) => {
+    /** Wait at most 1 second for ICE gathering. */
+    setTimeout(function () {
+      resolve(peer.localDescription);
+    }, 1000);
+    peer.onicegatheringstatechange = () =>
+      peer.iceGatheringState === "complete" && resolve(peer.localDescription);
+  });
+}
+
 export class PeerSocket extends EventTarget implements Socket {
   private peer: RTCPeerConnection;
   private dataChannel: RTCDataChannel;
@@ -31,15 +42,7 @@ export class PeerSocket extends EventTarget implements Socket {
     this.dataChannel = peer.createDataChannel("dataChannel");
     peer.createOffer().then(async (offer) => {
       await peer.setLocalDescription(offer);
-      const { sdp } = await new Promise<RTCSessionDescription>((resolve) => {
-        /** Wait at most 1 second for ICE gathering. */
-        setTimeout(function () {
-          resolve(peer.localDescription);
-        }, 1000);
-        peer.onicegatheringstatechange = () =>
-          peer.iceGatheringState === "complete" &&
-          resolve(peer.localDescription);
-      });
+      const { sdp } = await waitIceGathering(peer);
       let signalSocket = new WebSocket(endpoint);
       signalSocket.onopen = () => {
         const peerId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -150,17 +153,7 @@ export class PeerServer extends EventTarget {
           });
           const answer = await peer.createAnswer();
           await peer.setLocalDescription(answer);
-          const { sdp } = await new Promise<RTCSessionDescription>(
-            (resolve) => {
-              /** Wait at most 1 second for ICE gathering. */
-              setTimeout(function () {
-                resolve(peer.localDescription);
-              }, 1000);
-              peer.onicegatheringstatechange = () =>
-                peer.iceGatheringState === "complete" &&
-                resolve(peer.localDescription);
-            }
-          );
+          const { sdp } = await waitIceGathering(peer);
           if (this.abortController.signal.aborted) return;
           const peerSocket = new PeerSocket(peer);
           signalSocket.send(
