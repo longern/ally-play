@@ -18,6 +18,16 @@ type LobbyState = {
   }[];
 };
 
+function withResolvers<T>() {
+  let resolve: (value: T) => void;
+  let reject: (error: any) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 export function createLobby(options?: {
   playerName?: string;
   game?: {
@@ -187,7 +197,7 @@ export function createLobby(options?: {
       promise: loadedPromise,
       resolve: resolveLoaded,
       reject: rejectLoaded,
-    } = Promise.withResolvers<void>();
+    } = withResolvers<void>();
 
     const timeout = setTimeout(() => {
       rejectLoaded(new Error("Timeout"));
