@@ -32,7 +32,7 @@ function useSettingsState() {
   const [settings, setSettings] = useState<Settings>(null);
 
   useEffect(() => {
-    const settingsValue = localStorage.getItem("settings") ?? "{}";
+    const settingsValue = localStorage.getItem("allyPlaySettings") ?? "{}";
     const settings = JSON.parse(settingsValue) as Settings;
     if (!settings.username) {
       settings.username = window.prompt("Enter your username");
@@ -43,7 +43,7 @@ function useSettingsState() {
 
   useEffect(() => {
     if (settings === null) return;
-    localStorage.setItem("settings", JSON.stringify(settings));
+    localStorage.setItem("allyPlaySettings", JSON.stringify(settings));
   }, [settings]);
 
   return [settings, setSettings] as const;
