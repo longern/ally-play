@@ -122,6 +122,10 @@ export function createLobby(options?: {
         });
       });
 
+      abortController.signal.addEventListener("abort", () => {
+        connection.close();
+      });
+
       if (state.runningMatch) return;
       state = {
         ...state,
@@ -230,7 +234,7 @@ export function createLobby(options?: {
         connections.get(data.playerID).send(event.data);
       } else {
         data.playerID = playerID;
-        connections.get(state.roomID).send(event.data);
+        connections.get(state.roomID)?.send(event.data);
       }
     };
 
@@ -291,8 +295,9 @@ export function createLobby(options?: {
     peer.addEventListener("error", (event: ErrorEvent) => {
       options.onError?.(event.error);
     });
-    peer.addEventListener("closed", () => {
+    peer.addEventListener("close", () => {
       isConnected = false;
+      connections.delete(roomID);
       publish();
     });
     abortController.signal.addEventListener("abort", () => {
@@ -404,7 +409,6 @@ export function useLobby({
 
     return () => {
       subscription();
-      lobby.close();
     };
   }, [lobby]);
 

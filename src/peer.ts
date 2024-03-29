@@ -105,6 +105,9 @@ export class PeerSocket extends EventTarget implements Socket {
     this.dataChannel.onmessage = (event) => {
       this.dispatchEvent(new MessageEvent("message", { data: event.data }));
     };
+    this.dataChannel.onclose = () => {
+      this.dispatchEvent(new CloseEvent("close"));
+    };
   }
 
   #init(peer: RTCPeerConnection) {
@@ -116,6 +119,9 @@ export class PeerSocket extends EventTarget implements Socket {
       };
       this.dataChannel.onerror = (event: RTCErrorEvent) => {
         this.dispatchEvent(new ErrorEvent("error", { error: event }));
+      };
+      this.dataChannel.onclose = () => {
+        this.dispatchEvent(new CloseEvent("close"));
       };
       this.dispatchEvent(new Event("open"));
     };

@@ -117,21 +117,18 @@ function App() {
     setRoomDialogOpen(true);
   }, []);
 
-  const handleSearch = useCallback(
-    (search: string) => {
-      if (search.match(/^[0-9]{6}$/)) {
-        setRoomID(search);
-        setRoomDialogOpen(true);
-      }
-    },
-    [setRoomID]
-  );
+  const handleSearch = useCallback((search: string) => {
+    if (search.match(/^[0-9]{6}$/)) {
+      setRoomID(search);
+      setRoomDialogOpen(true);
+    }
+  }, []);
 
   const handleRoomDialogClose = useCallback(() => {
     gameRef.current = undefined;
     setRoomDialogOpen(false);
     setRoomID(undefined);
-  }, [setRoomID]);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -142,7 +139,7 @@ function App() {
     } else if (window.history.state !== null) {
       window.history.replaceState(null, "");
     }
-  }, [setRoomID]);
+  }, []);
 
   useEffect(() => {
     if ("virtualKeyboard" in window.navigator)
