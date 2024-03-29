@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PeerServer, PeerSocket, Socket } from "./peer";
 
 type LobbyState = {
@@ -36,6 +36,7 @@ export function createLobby(options?: {
     icon?: string;
   };
   config?: any;
+  onError?: (error: Error) => void;
 }) {
   options = options ?? {};
   const config = options.config ?? {
@@ -287,8 +288,8 @@ export function createLobby(options?: {
       );
     });
     peer.addEventListener("message", handleDataFromHost);
-    peer.addEventListener("error", (error) => {
-      throw error;
+    peer.addEventListener("error", (event: ErrorEvent) => {
+      options.onError?.(event.error);
     });
     peer.addEventListener("closed", () => {
       isConnected = false;
@@ -366,12 +367,19 @@ export type Lobby = ReturnType<typeof createLobby>;
 export function useLobby({
   playerName,
   config,
+  onError,
 }: {
   playerName?: string;
   config?: any;
+  onError?: (error: Error) => void;
 }) {
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
   const lobby = useMemo(
-    () => createLobby({ playerName, config }),
+    () => createLobby({ playerName, config, onError: onErrorRef.current }),
     [config, playerName]
   );
 

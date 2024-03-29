@@ -66,6 +66,16 @@ export class PeerSocket extends EventTarget implements Socket {
       };
       signalSocket.onmessage = async (event) => {
         const body = JSON.parse(event.data);
+
+        if (body.type === "error") {
+          if (body.data === "Topic not found") {
+            this.dispatchEvent(
+              new ErrorEvent("error", { error: new Error("Room not found.") })
+            );
+          }
+          return;
+        }
+
         if (body.type !== "message") return;
         const message = JSON.parse(body.data);
         switch (message.type) {
@@ -77,6 +87,13 @@ export class PeerSocket extends EventTarget implements Socket {
             signalSocket.send(JSON.stringify({ type: "consume" }));
             break;
         }
+      };
+      signalSocket.onerror = (event: ErrorEvent) => {
+        this.dispatchEvent(
+          new ErrorEvent("error", {
+            error: new Error("Failed to connect to the signaling server."),
+          })
+        );
       };
       peer.addEventListener("close", () => {
         signalSocket.close();

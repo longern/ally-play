@@ -8,6 +8,7 @@ import {
   Container,
   Grid,
   IconButton,
+  Snackbar,
   Stack,
   TextField,
 } from "@mui/material";
@@ -75,6 +76,7 @@ function RoomDialog({
 }) {
   const settings = useSettings();
   const setSettings = useSetSettings();
+  const [error, setError] = React.useState<Error | null>(null);
   const config = useMemo(
     () =>
       settings.turnServer ? { iceServers: [settings.turnServer] } : undefined,
@@ -83,6 +85,7 @@ function RoomDialog({
   const { lobby, lobbyState, playerID, isConnected } = useLobby({
     playerName: settings.username,
     config,
+    onError: setError,
   });
   const [showHelp, setShowHelp] = React.useState(false);
 
@@ -256,6 +259,11 @@ function RoomDialog({
           ) : null}
         </Container>
       )}
+      <Snackbar
+        open={Boolean(error)}
+        message={error?.message}
+        onClose={() => setError(null)}
+      />
     </HistoryDialog>
   );
 }
